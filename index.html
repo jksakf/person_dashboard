@@ -242,8 +242,21 @@
                                font-weight: 600; 
                                cursor: pointer; 
                                box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-                               transition: transform 0.2s, box-shadow 0.2s;">
+                               transition: transform 0.2s, box-shadow 0.2s;
+                               margin-right: 15px;">
                     🚀 一鍵載入全部 CSV
+                </button>
+                <button onclick="clearAllData()" style="background: #656af5; 
+                               color: white; 
+                               border: none; 
+                               padding: 12px 30px; 
+                               border-radius: 8px; 
+                               font-size: 1.1rem; 
+                               font-weight: 600; 
+                               cursor: pointer; 
+                               box-shadow: 0 4px 15px rgba(245, 101, 101, 0.4);
+                               transition: transform 0.2s, box-shadow 0.2s;">
+                    🗑️ 清除資料
                 </button>
                 <input type="file" id="batchUpload" accept=".csv" multiple style="display: none;">
                 <div id="batchUploadStatus" style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9rem;">
@@ -356,6 +369,27 @@
 
         <!-- 3. 已實現損益分頁 -->
         <div id="pnl" class="tab-content">
+            <!-- 篩選器區域 -->
+            <div class="dashboard-card" style="margin-bottom: 20px; padding: 15px;">
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <div style="font-weight: bold; color: var(--text-secondary);">📅 日期篩選:</div>
+                    <input type="date" id="pnlStartDate"
+                        style="padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                    <span>至</span>
+                    <input type="date" id="pnlEndDate"
+                        style="padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+
+                    <button onclick="applyPnLFilter()"
+                        style="background: var(--primary-color); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                        🔍 篩選
+                    </button>
+                    <button onclick="resetPnLFilter()"
+                        style="background: #f1f5f9; color: var(--text-secondary); border: 1px solid #cbd5e1; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                        🔄 重置
+                    </button>
+                </div>
+            </div>
+
             <!-- 總損益卡片 -->
             <div class="dashboard-card" style="text-align: center;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
@@ -512,7 +546,7 @@
             // CSV 欄位定義 (用於驗證檔案類型)
             const SCHEMA = {
                 bankAssets: ["日期", "帳戶名稱", "金額"],
-                stockHoldings: ["日期", "市場", "股票代號", "股票名稱", "持有股數", "總成本", "總市值", "未實現損益", "報酬率%"],
+                stockHoldings: ["日期", "市場", "股票代號", "股票名稱", "持有股數", "總成本", "市值", "未實現損益", "報酬率%"],
                 realizedPnL: ["日期", "市場", "股票代號", "股票名稱", "賣出股數", "總成本", "賣出價", "已實現損益", "報酬率%"]
             };
 
@@ -548,7 +582,7 @@
                         header: true,
                         skipEmptyLines: true,
                         // encoding: "UTF-8", // 移除強制編碼
-                        dynamicTyping: true,
+                        dynamicTyping: false,
                         complete: function (results) {
                             try {
                                 console.log("Parsing complete for", type, results);
@@ -644,6 +678,55 @@
                         document.getElementById(type === 'bankAssets' ? 'bankStatus' : type === 'stockHoldings' ? 'stockStatus' : 'pnlStatus').textContent = "❌ 錯誤";
                     }
                 }
+            }
+
+            // 清除資料
+            function clearAllData() {
+                if (!confirm('確定要清除所有目前顯示的資料嗎？')) return;
+
+                // 1. 重置資料物件
+                appData = {
+                    bankAssets: [],
+                    stockHoldings: [],
+                    realizedPnL: []
+                };
+
+                // 2. 銷毀所有圖表
+                Object.keys(charts).forEach(key => {
+                    if (charts[key]) {
+                        charts[key].destroy();
+                        charts[key] = null;
+                    }
+                });
+                charts = {};
+
+                // 3. 重置數字顯示
+                ['totalBankAssets', 'totalMarketValue', 'totalUnrealizedPnL', 'totalRealizedPnL', 'totalSalePrice', 'totalCost'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = '$0';
+                    if (el && id === 'totalUnrealizedPnL') el.style.color = ''; // 重置顏色
+                    if (el && id === 'totalRealizedPnL') el.style.color = '';
+                });
+
+                // 4. 重置日期與狀態文字
+                ['assetsDate', 'stockDate', 'pnlDate'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = '(尚未載入資料)';
+                });
+
+                ['bankStatus', 'stockStatus', 'pnlStatus', 'batchUploadStatus'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = '';
+                });
+
+                // 5. 重置表格
+                document.getElementById('stockTableContainer').innerHTML = '<div class="placeholder-text">請上傳股票庫存 CSV 檔案以檢視明細</div>';
+                document.getElementById('pnlTableContainer').innerHTML = '<div class="placeholder-text">請上傳已實現損益 CSV 檔案以檢視明細</div>';
+
+                // 6. 清空檔案輸入框
+                document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
+
+                // alert('已清除所有資料！');
             }
 
             // 渲染銀行資產圓餅圖 (最新月份)
@@ -860,7 +943,7 @@
                 const currentData = data.filter(item => item['日期'] === latestDate);
 
                 // 3. 計算總市值與總未實現損益
-                const totalMarketValue = currentData.reduce((sum, item) => sum + parseMoney(item['總市值']), 0);
+                const totalMarketValue = currentData.reduce((sum, item) => sum + parseMoney(item['市值']), 0);
                 const totalUnrealizedPnL = currentData.reduce((sum, item) => sum + parseMoney(item['未實現損益']), 0);
 
                 // 4. 更新 DOM
@@ -874,7 +957,7 @@
 
                 // 5. 準備圓餅圖資料
                 const labels = currentData.map(item => item['股票名稱'] || item['股票代號']);
-                const marketValues = currentData.map(item => parseMoney(item['總市值']));
+                const marketValues = currentData.map(item => parseMoney(item['市值']));
 
                 // 6. 繪製圓餅圖
                 const ctx = document.getElementById('stockPieChart').getContext('2d');
@@ -988,7 +1071,7 @@
                             <td style="padding: 10px; border: 1px solid #ddd;">${item['股票名稱'] || '-'}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${parseMoney(item['持有股數']).toLocaleString()}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['總成本']).toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['總市值']).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['市值']).toLocaleString()}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor}; font-weight: 600;">
                                 ${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}
                             </td>
@@ -1008,23 +1091,35 @@
             }
 
             // 渲染已實現損益 (圓餅圖 + 明細表)
-            function renderRealizedPnL() {
-                const data = appData.realizedPnL;
-                if (!data || data.length === 0) return;
-
-                // 1. 使用所有資料（不過濾日期）
-                const allData = data;
+            // 支援傳入過濾後的資料 (filteredData)，若無則使用全部
+            function renderRealizedPnL(filteredData = null) {
+                const data = filteredData || appData.realizedPnL;
+                if (!data || data.length === 0) {
+                    // 如果是因為篩選後變空，也要更新 UI 顯示 0
+                    if (filteredData) {
+                        // 清空顯示
+                        document.getElementById('totalRealizedPnL').textContent = '$0';
+                        document.getElementById('totalSalePrice').textContent = '$0';
+                        document.getElementById('totalCost').textContent = '$0';
+                        document.getElementById('pnlDate').textContent = `查無符合條件的資料`;
+                        if (charts['pnlPie']) { charts['pnlPie'].destroy(); charts['pnlPie'] = null; }
+                        document.getElementById('pnlTableContainer').innerHTML = '<div class="placeholder-text">查無符合條件的資料</div>';
+                    }
+                    return;
+                }
 
                 // 2. 找出資料日期範圍（用於顯示）
-                const uniqueDates = [...new Set(data.map(item => item['日期']))].sort();
-                const dateRange = uniqueDates.length > 1
-                    ? `${uniqueDates[0]} ~ ${uniqueDates[uniqueDates.length - 1]}`
-                    : uniqueDates[0];
+                // 先複製一份並排序
+                const sortedDataByDate = [...data].sort((a, b) => new Date(a['日期']) - new Date(b['日期']));
+                const startDate = sortedDataByDate[0]['日期'];
+                const endDate = sortedDataByDate[sortedDataByDate.length - 1]['日期'];
+
+                const dateRange = startDate === endDate ? startDate : `${startDate} ~ ${endDate}`;
 
                 // 3. 計算總已實現損益、總賣出價、總成本
-                const totalRealizedPnL = allData.reduce((sum, item) => sum + parseMoney(item['已實現損益']), 0);
-                const totalSalePrice = allData.reduce((sum, item) => sum + parseMoney(item['賣出價']), 0);
-                const totalCost = allData.reduce((sum, item) => sum + parseMoney(item['總成本']), 0);
+                const totalRealizedPnL = data.reduce((sum, item) => sum + parseMoney(item['已實現損益']), 0);
+                const totalSalePrice = data.reduce((sum, item) => sum + parseMoney(item['賣出價']), 0);
+                const totalCost = data.reduce((sum, item) => sum + parseMoney(item['總成本']), 0);
 
                 // 4. 更新 DOM
                 const pnlEl = document.getElementById('totalRealizedPnL');
@@ -1033,14 +1128,16 @@
 
                 document.getElementById('totalSalePrice').textContent = `$${totalSalePrice.toLocaleString()}`;
                 document.getElementById('totalCost').textContent = `$${totalCost.toLocaleString()}`;
-                document.getElementById('pnlDate').textContent = `資料期間: ${dateRange} (共 ${allData.length} 筆交易)`;
+                document.getElementById('pnlDate').textContent = `資料期間: ${dateRange} (共 ${data.length} 筆交易)`;
+                // ... 繼續後面的圖表與表格渲染
 
                 // 5. 計算盈利/虧損交易的金額
                 let profitAmount = 0;
                 let lossAmount = 0;
 
-                allData.forEach(item => {
+                data.forEach(item => { // 注意這裡改成用 data
                     const pnl = parseMoney(item['已實現損益']);
+
                     if (pnl > 0) {
                         profitAmount += pnl;
                     } else if (pnl < 0) {
@@ -1124,12 +1221,50 @@
                 });
 
                 // 8. 繪製明細表格（按日期排序，最新的在上面）
-                const sortedData = allData.sort((a, b) => {
+                const sortedData = data.sort((a, b) => { // Fix: use data instead of allData
                     const dateA = String(a['日期'] || '');
                     const dateB = String(b['日期'] || '');
                     return dateB.localeCompare(dateA); // 降序排列
                 });
                 renderPnLTable(sortedData);
+            }
+
+            // 應用損益篩選
+            function applyPnLFilter() {
+                const startStr = document.getElementById('pnlStartDate').value;
+                const endStr = document.getElementById('pnlEndDate').value;
+
+                if (!appData.realizedPnL || appData.realizedPnL.length === 0) {
+                    alert("目前沒有資料可供篩選");
+                    return;
+                }
+
+                if (!startStr && !endStr) {
+                    renderRealizedPnL(); // 沒選就顯示全部
+                    return;
+                }
+
+                const startDate = startStr ? new Date(startStr.replace(/-/g, '/')) : null;
+                const endDate = endStr ? new Date(endStr.replace(/-/g, '/')) : null;
+
+                const filtered = appData.realizedPnL.filter(item => {
+                    // 資料日期格式通常是 yyyy/MM/dd，轉 Date
+                    const itemDate = new Date(item['日期']);
+
+                    if (startDate && itemDate < startDate) return false;
+                    if (endDate && itemDate > endDate) return false;
+
+                    return true;
+                });
+
+                renderRealizedPnL(filtered);
+            }
+
+            // 重置損益篩選
+            function resetPnLFilter() {
+                document.getElementById('pnlStartDate').value = '';
+                document.getElementById('pnlEndDate').value = '';
+                renderRealizedPnL(null); // 恢復顯示全部
             }
 
             // 渲染已實現損益明細表格

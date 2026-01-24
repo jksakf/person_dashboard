@@ -1,0 +1,11 @@
+﻿{
+    "OutputDirectory": "output",
+    "Logging": {
+        "Level": "Info",
+        "LogFile": "logs/app.log"
+    },
+    "Defaults": {
+        "DateFormat": "yyyyMMdd",
+        "CsvEncoding": "Unicode"
+    }
+}
