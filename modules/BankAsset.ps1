@@ -32,62 +32,43 @@ function Invoke-BankAssetFlow {
     # -----------------------------------------------------------
 
     try {
-        while ($true) {
-            Write-Host "`n--- 新增一筆資料 (預設日期: $defaultDate) ---" -ForegroundColor Green
-            
-            # 1. 輸入日期
-            $inputDate = Get-ValidDate -DefaultDate $defaultDate
-            $defaultDate = $inputDate
-            $date = [datetime]::ParseExact($inputDate, "yyyyMMdd", $null).ToString("yyyy/MM/dd")
+        Write-Host "`n--- 開始依序輸入帳戶金額 (Enter 跳過，q 結束) ---" -ForegroundColor Cyan
 
-            # 2. 選擇帳戶
-            Write-Host "💳 可用帳戶:"
-            for ($i = 0; $i -lt $accounts.Count; $i++) {
-                Write-Host "   $($i+1). $($accounts[$i])"
-            }
-            
-            $accInput = Get-CleanInput -Prompt "請輸入帳戶名稱 或 選單編號"
-            $accountName = ""
-            
-            if ($accInput -match "^\d+$") {
-                $idx = [int]$accInput
-                if ($idx -ge 1 -and $idx -le $accounts.Count) {
-                    $accountName = $accounts[$idx - 1]
-                }
-                else {
-                    Write-Log "❌ 無效的編號" -Level Warning
-                    continue
-                }
-            }
-            elseif ($accInput -in $accounts) {
-                $accountName = $accInput
-            }
-            else {
-                Write-Log "❌ 輸入錯誤，必須是清單中的名稱或編號" -Level Warning
+        # 1. 輸入日期
+        $inputDate = Get-ValidDate -DefaultDate $defaultDate
+        $defaultDate = $inputDate
+        $date = [datetime]::ParseExact($inputDate, "yyyyMMdd", $null).ToString("yyyy/MM/dd")
+
+        foreach ($accountName in $accounts) {
+            # 2. 依序輸入金額
+            $amtInput = Get-CleanInput -Prompt "$accountName 金額" -Mandatory $false
+
+            # 空白則跳過
+            if (-not $amtInput) {
                 continue
             }
 
-            # 3. 輸入金額
-            $amtInput = Get-CleanInput -Prompt "請輸入金額 (整數)" 
+            # 驗證數字
             if ($amtInput -notmatch "^-?\d+$") {
-                Write-Log "❌ 金額必須為數字" -Level Warning
+                Write-Log "⚠️ 金額必須為數字，此筆已跳過" -Level Warning
                 continue
             }
+            
             $amount = [int]$amtInput
 
-            # 4. 加入清單
+            # 3. 加入清單
             $record = [PSCustomObject]@{
                 "日期"   = $date
                 "帳戶名稱" = $accountName
                 "金額"   = $amount
             }
             $data.Add($record) | Out-Null
-            Write-Log "✅ 已暫存: $date | $accountName | $amount" -Level Info
+            Write-Log "✅ $accountName : $amount" -Level Info
         }
     }
     catch {
         if ($_.Exception.Message -eq "UserExit") {
-            Write-Host "`n結束輸入。"
+            Write-Host "`n停止輸入。"
         }
         else {
             Write-Error $_
@@ -95,6 +76,6 @@ function Invoke-BankAssetFlow {
     }
 
     # 匯出資料
-    Export-DataToCsv -Data $data -FileNamePrefix "bank_assets"
+    Export-DataToCsv -Data $data -FileNamePrefix "bank_assets" -OutputDirectory "output/history_data/Bank_assets"
     Read-Host "`n按 Enter 鍵繼續..."
 }

@@ -32,6 +32,13 @@ function Invoke-DataMergerFlow {
         "realized_pnl"   = "已實現損益"
     }
 
+    # 定義子資料夾對應
+    $subDirs = @{
+        "bank_assets"    = "history_data/Bank_assets"
+        "stock_holdings" = "history_data/Stock_holdings"
+        "realized_pnl"   = "history_data/Realized_pnl"
+    }
+
     $outputDir = if ($Script:Config.OutputDirectory) { $Script:Config.OutputDirectory } else { "output" }
     if (-not (Test-Path $outputDir)) { 
         Write-Log "❌ 找不到輸出目錄: $outputDir" -Level Error
@@ -42,27 +49,36 @@ function Invoke-DataMergerFlow {
 
     foreach ($type in $fileTypes.Keys) {
         $name = $fileTypes[$type]
+        $subPath = $subDirs[$type]
+        
+        # 組合完整的搜尋目錄 (Output root + sub directory)
+        $searchDir = Join-Path $outputDir $subPath
+
+        if (-not (Test-Path $searchDir)) {
+            Write-Log "⚠️  目錄不存在: $subPath (尚未建立任何 $name 紀錄)" -Level Warning
+            continue
+        }
+
         $outputFilenamePrefix = $targetYear # 預設檔名前綴
         $pattern = "${targetYear}*_${type}.csv" # 預設搜尋樣式
 
-        # --- 特殊邏輯：已實現損益可選擇合併所有歷史 ---
-        if ($type -eq "realized_pnl") {
-            Write-Host "`n[詢問] 針對 [$name]，您想要合併的範圍是？" -ForegroundColor Yellow
-            Write-Host "   [1] 僅 $targetYear 年度 (預設)"
-            Write-Host "   [2] 所有歷史交易紀錄"
-            $pnlChoice = Read-Host "請選擇 [1/2]"
-            
-            if ($pnlChoice -eq '2') {
-                Write-Host "   >>> 已選擇合併 [所有歷史] 資料" -ForegroundColor Green
-                $pattern = "*_${type}.csv" # 搜尋所有年份
-                $outputFilenamePrefix = "ALL_HISTORY"
-            }
-            else {
-                Write-Host "   >>> 已選擇合併 [$targetYear] 年度資料" -ForegroundColor Cyan
-            }
+        # --- 詢問：選擇合併範圍 (年度 vs 全歷史) ---
+        Write-Host "`n[詢問] 針對 [$name]，您想要合併的範圍是？" -ForegroundColor Yellow
+        Write-Host "   [1] 僅 $targetYear 年度 (預設)"
+        Write-Host "   [2] 所有歷史交易紀錄"
+        $choice = Read-Host "請選擇 [1/2]"
+        
+        if ($choice -eq '2') {
+            Write-Host "   >>> 已選擇合併 [所有歷史] 資料" -ForegroundColor Green
+            $pattern = "*_${type}.csv" # 搜尋所有年份
+            $outputFilenamePrefix = "ALL_HISTORY"
+        }
+        else {
+            Write-Host "   >>> 已選擇合併 [$targetYear] 年度資料" -ForegroundColor Cyan
         }
 
-        $files = Get-ChildItem -Path $outputDir -Filter $pattern | Where-Object { $_.Name -notmatch "ANNUAL" -and $_.Name -notmatch "ALL_HISTORY" }
+        # 在子目錄搜尋
+        $files = Get-ChildItem -Path $searchDir -Filter $pattern | Where-Object { $_.Name -notmatch "ANNUAL" -and $_.Name -notmatch "ALL_HISTORY" }
         
         if ($files.Count -eq 0) {
             Write-Log "⚠️  無檔案: [$name] (找不到符合 $pattern 的檔案)" -Level Warning

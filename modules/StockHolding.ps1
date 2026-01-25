@@ -128,6 +128,6 @@ function Invoke-StockHoldingFlow {
         }
     }
 
-    Export-DataToCsv -Data $data -FileNamePrefix "stock_holdings"
+    Export-DataToCsv -Data $data -FileNamePrefix "stock_holdings" -OutputDirectory "output/history_data/Stock_holdings"
     Read-Host "`n按 Enter 鍵繼續..."
 }

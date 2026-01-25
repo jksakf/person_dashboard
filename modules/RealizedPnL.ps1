@@ -128,6 +128,6 @@ function Invoke-RealizedPnLFlow {
         }
     }
 
-    Export-DataToCsv -Data $data -FileNamePrefix "realized_pnl"
+    Export-DataToCsv -Data $data -FileNamePrefix "realized_pnl" -OutputDirectory "output/history_data/Realized_pnl"
     Read-Host "`n按 Enter 鍵繼續..."
 }

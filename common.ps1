@@ -170,7 +170,10 @@ function Export-DataToCsv {
         [System.Collections.ArrayList]$Data,
         
         [Parameter(Mandatory = $true)]
-        [string]$FileNamePrefix
+        [string]$FileNamePrefix,
+
+        [Parameter(Mandatory = $false)]
+        [string]$OutputDirectory
     )
 
     if ($null -eq $Data -or $Data.Count -eq 0) {
@@ -178,12 +181,28 @@ function Export-DataToCsv {
         return
     }
 
-    # 取得輸出路徑
-    $outputDir = if ($Script:Config.OutputDirectory) { $Script:Config.OutputDirectory } else { "output" }
-    if (-not (Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir -Force | Out-Null }
+    # 取得輸出路徑優先順序: 參數 > Config > 預設 "output"
+    $targetDir = if ($OutputDirectory) { 
+        $OutputDirectory 
+    }
+    elseif ($Script:Config.OutputDirectory) { 
+        $Script:Config.OutputDirectory 
+    }
+    else { 
+        "output" 
+    }
+
+    # 處理相對路徑轉絕對路徑 (若不是絕對路徑，則基於 RootPath)
+    if (-not [System.IO.Path]::IsPathRooted($targetDir)) {
+        $targetDir = Join-Path $Script:RootPath $targetDir
+    }
+
+    if (-not (Test-Path $targetDir)) { 
+        New-Item -ItemType Directory -Path $targetDir -Force | Out-Null 
+    }
 
     $dateStr = Get-Date -Format "yyyyMMdd"
-    $fullPath = Join-Path $outputDir "${dateStr}_${FileNamePrefix}.csv"
+    $fullPath = Join-Path $targetDir "${dateStr}_${FileNamePrefix}.csv"
 
     try {
         # 根據 PowerBI/Excel 相容性需求，使用 Unicode (UTF-16 LE)

@@ -296,6 +296,16 @@
 
         <!-- 1. 個人資產分頁 -->
         <div id="assets" class="tab-content active">
+            <!-- 日期選擇器 -->
+            <div class="dashboard-card"
+                style="padding: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <label for="bankDateSelect" style="font-weight: bold; color: var(--text-secondary);">📅 選擇日期:</label>
+                <select id="bankDateSelect" onchange="renderBankAssets(this.value)"
+                    style="padding: 8px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; cursor: pointer; background-color: white;">
+                    <option value="">(請先匯入資料)</option>
+                </select>
+            </div>
+
             <!-- 總資產卡片 -->
             <div class="dashboard-card" style="text-align: center;">
                 <h2 style="color: var(--text-secondary); font-size: 2rem; margin-bottom: 10px;">總資產</h2>
@@ -315,6 +325,16 @@
                 </div>
             </div>
 
+            <!-- 帳戶明細表格 -->
+            <div class="dashboard-card">
+                <h2 class="section-title">帳戶明細</h2>
+                <div id="bankTableContainer" style="overflow-x: auto;">
+                    <div class="placeholder-text">
+                        請上傳銀行資產 CSV 檔案以檢視明細
+                    </div>
+                </div>
+            </div>
+
             <!-- 圖表卡片: 資產趨勢圖 -->
             <div class="dashboard-card">
                 <h2 class="section-title">資產趨勢圖</h2>
@@ -326,6 +346,16 @@
 
         <!-- 2. 股票庫存分頁 -->
         <div id="stocks" class="tab-content">
+            <!-- 日期選擇器 -->
+            <div class="dashboard-card"
+                style="padding: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
+                <label for="stockDateSelect" style="font-weight: bold; color: var(--text-secondary);">📅 選擇日期:</label>
+                <select id="stockDateSelect" onchange="renderStockHoldings(this.value)"
+                    style="padding: 8px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; cursor: pointer; background-color: white;">
+                    <option value="">(請先匯入資料)</option>
+                </select>
+            </div>
+
             <!-- 總市值與損益卡片 -->
             <div class="dashboard-card" style="text-align: center;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -730,29 +760,56 @@
             }
 
             // 渲染銀行資產圓餅圖 (最新月份)
-            function renderBankAssets() {
+            // targetDate: 指定要渲染的日期字串 (YYYY/MM/DD)，若無則預設最新
+            function renderBankAssets(targetDate = null) {
                 const data = appData.bankAssets;
                 if (!data || data.length === 0) return;
 
-                // 1. 找出最新日期
+                // 1. 找出所有日期並排序 (新 -> 舊)
                 const uniqueDates = [...new Set(data.map(item => item['日期']))].sort().reverse();
-                const latestDate = uniqueDates[0];
 
-                // 2. 過濾最新日期的資料
-                const currentData = data.filter(item => item['日期'] === latestDate);
+                // 2. 更新下拉選單 (如果是第一次渲染或資料更新)
+                const selectEl = document.getElementById('bankDateSelect');
+                if (targetDate === null || selectEl.options.length <= 1) {
+                    selectEl.innerHTML = '';
+                    uniqueDates.forEach(date => {
+                        const option = document.createElement('option');
+                        option.value = date;
+                        option.textContent = date;
+                        selectEl.appendChild(option);
+                    });
+                    // 預設選取最新
+                    selectEl.value = uniqueDates[0];
+                }
 
-                // 3. 計算總金額
+                // 3. 決定要顯示的日期
+                const selectedDate = targetDate || selectEl.value || uniqueDates[0];
+
+                // 確保選單顯示正確
+                if (selectEl.value !== selectedDate) {
+                    selectEl.value = selectedDate;
+                }
+
+                // 4. 過濾該日期的資料
+                const currentData = data.filter(item => item['日期'] === selectedDate);
+
+                if (currentData.length === 0) {
+                    alert('查無該日期的資產資料');
+                    return;
+                }
+
+                // 5. 計算總金額
                 const totalAmount = currentData.reduce((sum, item) => sum + parseMoney(item['金額']), 0);
 
-                // 4. 更新 DOM
+                // 6. 更新 DOM
                 document.getElementById('totalBankAssets').textContent = `$${totalAmount.toLocaleString()}`;
-                document.getElementById('assetsDate').textContent = `資料日期: ${latestDate}`;
+                document.getElementById('assetsDate').textContent = `資料日期: ${selectedDate}`;
 
-                // 5. 準備圖表資料
+                // 7. 準備圖表資料
                 const labels = currentData.map(item => item['帳戶名稱']);
                 const amounts = currentData.map(item => parseMoney(item['金額']));
 
-                // 6. 繪製圓餅圖
+                // 8. 繪製圓餅圖
                 const ctx = document.getElementById('bankPieChart').getContext('2d');
 
                 if (charts['bankPie']) {
@@ -825,6 +882,53 @@
                         }
                     }
                 });
+
+                // 9. 繪製明細表格
+                renderBankTable(currentData);
+            }
+
+            // 渲染銀行帳戶明細表格
+            function renderBankTable(data) {
+                const container = document.getElementById('bankTableContainer');
+
+                let tableHTML = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 1rem;">
+                        <thead style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <tr>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">帳戶名稱</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">金額</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">佔比</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                // 計算總金額用於顯示佔比
+                const totalAmount = data.reduce((sum, item) => sum + parseMoney(item['金額']), 0);
+
+                // 依照金額排序 (大 -> 小)
+                const sortedData = [...data].sort((a, b) => parseMoney(b['金額']) - parseMoney(a['金額']));
+
+                sortedData.forEach((item, index) => {
+                    const bgColor = index % 2 === 0 ? '#f9f9f9' : '#fff';
+                    const amount = parseMoney(item['金額']);
+                    const percentage = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(1) + '%' : '0%';
+
+                    tableHTML += `
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: var(--text-color);">${item['帳戶名稱'] || '-'}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-family: monospace; font-size: 1.1rem;">$${amount.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${percentage}</td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+
+                container.innerHTML = tableHTML;
             }
 
             // 渲染資產歷史趨勢圖 (折線圖)
@@ -836,6 +940,12 @@
                 let dailyTotals = {};
                 data.forEach(item => {
                     const date = item['日期'];
+
+                    // 過濾無效日期 (空白、null、undefined)
+                    if (!date || typeof date !== 'string' || date.trim() === '') {
+                        return;
+                    }
+
                     const amount = parseMoney(item['金額']);
                     if (!dailyTotals[date]) {
                         dailyTotals[date] = 0;
@@ -929,37 +1039,67 @@
                     }
                 });
             }
-
-            // 渲染股票庫存 (圓餅圖 + 明細表)
-            function renderStockHoldings() {
+            function renderStockHoldings(targetDate = null) {
                 const data = appData.stockHoldings;
                 if (!data || data.length === 0) return;
 
-                // 1. 找出最新日期
+                // 1. 找出所有日期並排序 (新 -> 舊)
                 const uniqueDates = [...new Set(data.map(item => item['日期']))].sort().reverse();
-                const latestDate = uniqueDates[0];
 
-                // 2. 過濾最新日期的資料
-                const currentData = data.filter(item => item['日期'] === latestDate);
+                // 2. 更新下拉選單 (如果是第一次渲染或資料更新)
+                const selectEl = document.getElementById('stockDateSelect');
+                // 簡單判斷：如果選單選項數量跟日期數量不一致(加1個預設)，或者選單目前是預設文字，就重繪
+                // 注意：這會重置使用者目前的選擇，但在資料重新匯入時是合理的
+                // 為了避免在切換日期時重繪選單，我們檢查 targetDate 是否為事件觸發 (string)
 
-                // 3. 計算總市值與總未實現損益
+                // 若 targetDate 為 null (表示剛匯入資料)，則重建選單
+                if (targetDate === null || selectEl.options.length <= 1) {
+                    selectEl.innerHTML = '';
+                    uniqueDates.forEach(date => {
+                        const option = document.createElement('option');
+                        option.value = date;
+                        option.textContent = date;
+                        selectEl.appendChild(option);
+                    });
+                    // 預設選取最新
+                    selectEl.value = uniqueDates[0];
+                }
+
+                // 3. 決定要顯示的日期
+                // 如果 targetDate 有值，就用它；否則用選單目前的值；再沒有就用最新日期
+                const selectedDate = targetDate || selectEl.value || uniqueDates[0];
+
+                // 確保選單顯示正確 (如果是外部呼叫導致 filter 改變)
+                if (selectEl.value !== selectedDate) {
+                    selectEl.value = selectedDate;
+                }
+
+                // 4. 過濾該日期的資料
+                const currentData = data.filter(item => item['日期'] === selectedDate);
+
+                if (currentData.length === 0) {
+                    alert('查無該日期的庫存資料');
+                    return;
+                }
+
+                // 5. 計算總市值與總未實現損益
                 const totalMarketValue = currentData.reduce((sum, item) => sum + parseMoney(item['市值']), 0);
                 const totalUnrealizedPnL = currentData.reduce((sum, item) => sum + parseMoney(item['未實現損益']), 0);
 
-                // 4. 更新 DOM
+                // 6. 更新 DOM
                 document.getElementById('totalMarketValue').textContent = `$${totalMarketValue.toLocaleString()}`;
 
                 const pnlEl = document.getElementById('totalUnrealizedPnL');
                 pnlEl.textContent = `$${totalUnrealizedPnL.toLocaleString()}`;
                 pnlEl.style.color = totalUnrealizedPnL >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
-                document.getElementById('stockDate').textContent = `資料日期: ${latestDate}`;
+                document.getElementById('stockDate').textContent = `資料日期: ${selectedDate}`;
 
-                // 5. 準備圓餅圖資料
+                // 7. 準備圓餅圖資料
                 const labels = currentData.map(item => item['股票名稱'] || item['股票代號']);
                 const marketValues = currentData.map(item => parseMoney(item['市值']));
 
-                // 6. 繪製圓餅圖
+                // 8. 繪製圓餅圖
                 const ctx = document.getElementById('stockPieChart').getContext('2d');
 
                 if (charts['stockPie']) {
@@ -1032,7 +1172,7 @@
                     }
                 });
 
-                // 7. 繪製明細表格
+                // 9. 繪製明細表格
                 renderStockTable(currentData);
             }
 
