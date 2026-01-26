@@ -10,10 +10,13 @@ function Get-RealTimePrice {
     )
 
     try {
-        if ($MarketType -in "台股", "TW", "TSE", "OTC") {
+        # Safe Match for "台股" (台=53F0, 股=80A1)
+        # Also support standard codes
+        if ($MarketType -in "TW", "TSE", "OTC", "ETF" -or $MarketType -match [char]0x53F0) {
             return Get-TwsePrice -Code $Code
         }
-        elseif ($MarketType -match "港股|HK" -or $MarketType -match "美股|US") {
+        # 港股 (港=6E2F) / 美股 (美=7F8E)
+        elseif ($MarketType -match "HK" -or $MarketType -match [char]0x6E2F -or $MarketType -match "US" -or $MarketType -match [char]0x7F8E) {
             return Get-YahooPrice -Code $Code -MarketType $MarketType
         }
         else {

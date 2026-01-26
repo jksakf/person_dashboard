@@ -100,62 +100,15 @@ function Invoke-StockHoldingFlow {
         }
     }
 
-    # 4. 手動補登其他股票
-    while ($true) {
-        Write-Host "`n--------------------------------"
-        $ans = Get-CleanInput -Prompt "是否手動新增其他股票 (未在交易紀錄中)? (y/N)" -DefaultValue "N" -Mandatory $false
-        if ($ans -notin "y", "Y") { break }
-
-        # --- 手動輸入流程 (簡化版) ---
-        try {
-            Show-StockOptionList -Stocks $stocks
-            $stockInput = Get-CleanInput -Prompt "輸入代號或名稱"
-            
-            # 簡易搜尋邏輯
-            $code = $stockInput
-            $name = $stockInput
-            $market = "台股"
-            
-            # 從清單找名字
-            $found = $stocks | Where-Object { $_.Code -eq $stockInput -or $_.Name -like "*$stockInput*" } | Select-Object -First 1
-            if ($found) {
-                $code = $found.Code
-                $name = $found.Name
-                $market = $found.Type
-                Write-Host "✅ 選定: $name ($code)"
-            }
-            else {
-                $name = Get-CleanInput -Prompt "請輸入名稱"
-            }
-
-            $qty = [int](Get-CleanInput -Prompt "持有股數" -IsNumber $true)
-            $cost = [double](Get-CleanInput -Prompt "總成本" -IsNumber $true)
-            $price = [double](Get-CleanInput -Prompt "當前股價" -IsNumber $true)
-
-            $marketValue = $price * $qty
-            $pnl = $marketValue - $cost
-            $roiStr = if ($cost -ne 0) { "$([math]::Round(($pnl/$cost)*100, 2))%" } else { "0%" }
-
-            $record = [ordered]@{
-                "日期"    = $dateStr
-                "市場"    = $market
-                "股票代號"  = $code
-                "股票名稱"  = $name
-                "持有股數"  = $qty
-                "總成本"   = $cost
-                "市值"    = [math]::Round($marketValue, 0)
-                "未實現損益" = [math]::Round($pnl, 0)
-                "報酬率%"  = $roiStr
-            }
-            $data.Add([PSCustomObject]$record) | Out-Null
-            Write-Log "✅ 已手動記錄" -Level Info
-
-        }
-        catch {
-            Write-Host "❌ 輸入中斷或錯誤" -ForegroundColor Red
-        }
+    # 4. 總結與引導
+    if ($data.Count -eq 0) {
+        Write-Host "`n⚠️  目前無庫存資料。" -ForegroundColor Yellow
+        Write-Host "若您有交易紀錄尚未錄入，請使用主選單的 [4. 錄入交易明細] 功能。"
     }
-
-    Export-DataToCsv -Data $data -FileNamePrefix "stock_holdings" -OutputDirectory "output/history_data/Stock_holdings"
+    else {
+        # 匯出結果
+        Export-DataToCsv -Data $data -FileNamePrefix "stock_holdings" -OutputDirectory "output/history_data/Stock_holdings"
+    }
+    
     Read-Host "`n按 Enter 鍵繼續..."
 }

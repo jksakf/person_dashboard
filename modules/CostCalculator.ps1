@@ -44,8 +44,18 @@ function Get-PortfolioStatus {
 
     foreach ($t in $transactions) {
         $code = $t.'代號'
+        
+        # [Fix] 防止 CSV 有空行或代號為空導致 Crash
+        if ([string]::IsNullOrWhiteSpace($code)) {
+            continue
+        }
+
         $name = $t.'名稱'
-        $type = $t.'類別'   # 買進 / 賣出
+        $type = $t.'類別'
+        if (-not [string]::IsNullOrWhiteSpace($type)) {
+            $type = $type.Trim()
+        }
+        
         $qty = [int]$t.'股數'
         $amount = [double]$t.'總金額' # Buy: Cost (inc fee), Sell: Net Proceeds (dec fee/tax)
         
@@ -62,12 +72,18 @@ function Get-PortfolioStatus {
 
         $p = $portfolio[$code]
 
-        if ($type -eq "買進") {
+        # Regex Safe Match:
+        # Buy = 買 (8CB7) or Buy
+        # Sell = 賣 (8CE3) or Sell
+        $isBuy = $type -match "Buy" -or $type -match [char]0x8CB7
+        $isSell = $type -match "Sell" -or $type -match [char]0x8CE3
+
+        if ($isBuy) {
             # 買入：增加庫存，增加總成本
             $p.Quantity += $qty
             $p.TotalCost += $amount
         }
-        elseif ($type -eq "賣出") {
+        elseif ($isSell) {
             # 賣出：減少庫存，計算損益
             if ($p.Quantity -eq 0) {
                 Write-Warning "異常交易：嘗試賣出無庫存股票 $code ($qty)"

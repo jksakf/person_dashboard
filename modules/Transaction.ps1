@@ -119,10 +119,24 @@ function Invoke-TransactionFlow {
             # 總金額捨棄小數點
             $finalTotal = [math]::Floor($totalAmount)
 
-            # Date,Code,Name,Type,Price,Quantity,Fee,Tax,TotalAmount,Note
-            $record = "$dateFormatted,$($selectedStock.Code),$($selectedStock.Name),$type,$price,$qty,$finalFee,$finalTax,$finalTotal,$note"
-            $record | Out-File -FilePath $csvPath -Append -Encoding Unicode
-            Write-Log "已新增交易紀錄: $record" -Level Info
+            # [Fix] 使用 PSCustomObject 確保 CSV 格式正確 (自動處理換行與引號)
+            $recordObj = [PSCustomObject]@{
+                '日期'  = $dateFormatted
+                '代號'  = $selectedStock.Code
+                '名稱'  = $selectedStock.Name
+                '類別'  = $type
+                '價格'  = $price
+                '股數'  = $qty
+                '手續費' = $finalFee
+                '交易稅' = $finalTax
+                '總金額' = $finalTotal
+                '備註'  = $note
+            }
+            
+            # 使用 Export-Csv 寫入 (Unicode 編碼, 追加模式)
+            $recordObj | Export-Csv -Path $csvPath -Append -NoTypeInformation -Encoding Unicode -Force
+            
+            Write-Log "已新增交易紀錄: $($recordObj.日期) | $($recordObj.代號) | $($recordObj.名稱) | $($recordObj.類別) ..." -Level Info
             Write-Host "✅ 儲存成功！" -ForegroundColor Green
         }
         else {
