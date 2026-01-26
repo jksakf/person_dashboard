@@ -5,14 +5,16 @@ function Invoke-RealizedPnLFlow {
     
     # 1. 詢問年份
     $currentYear = (Get-Date).Year.ToString()
-    $targetYear = Get-CleanInput -Prompt "請輸入要產生報表的年份 (YYYY)" -DefaultValue $currentYear
-    if ($targetYear -notmatch "^\d{4}$") {
+    $targetYear = Get-CleanInput -Prompt "請輸入要產生報表的年份 (YYYY) 或輸入 'ALL' 查看全部歷史" -DefaultValue $currentYear
+    
+    if ($targetYear -ne "ALL" -and $targetYear -notmatch "^\d{4}$") {
         Write-Host "❌ 年份格式錯誤" -ForegroundColor Red
         return
     }
 
     # 2. 生成報表
-    Write-Host "🔄 正在從交易紀錄計算 $targetYear 年損益..." -ForegroundColor Cyan
+    $msg = if ($targetYear -eq "ALL") { "全部歷史" } else { "$targetYear 年" }
+    Write-Host "🔄 正在從交易紀錄計算 $msg 損益..." -ForegroundColor Cyan
     try {
         $pnlData = Get-PnLReport -TargetYear $targetYear
     }

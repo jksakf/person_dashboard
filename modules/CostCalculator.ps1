@@ -128,8 +128,9 @@ function Get-PnLReport {
         [string]$TargetYear = (Get-Date -Format "yyyy")
     )
 
-    # 取得所有歷史直到年底
-    $transactions = Get-TransactionData -TargetDate "${TargetYear}1231"
+    # 取得所有歷史直到年底 (或現在)
+    $queryDate = if ($TargetYear -eq "ALL") { "99991231" } else { "${TargetYear}1231" }
+    $transactions = Get-TransactionData -TargetDate $queryDate
     
     # 僅篩選當年度的賣出，但需重跑所有歷史以計算正確成本
     $pnlRecords = [System.Collections.ArrayList]::new()
@@ -166,12 +167,13 @@ function Get-PnLReport {
             $pnl = $amount - $cogs
             
             # 若此交易發生在目標年份，則記錄
-            if ($date.StartsWith($TargetYear)) {
+            # 如果 TargetYear 是 "ALL"，則全部記錄
+            if ($TargetYear -eq "ALL" -or $date.StartsWith($TargetYear)) {
                 $roi = 0
                 if ($cogs -ne 0) { $roi = ($pnl / $cogs) * 100 }
                 
                 $record = [ordered]@{
-                    "日期"    = [datetime]::ParseExact($date, "yyyyMMdd", $null).ToString("yyyy/MM/dd")
+                    "日期"    = [datetime]::Parse($date).ToString("yyyy/MM/dd")
                     "市場"    = "台股" # 暫定，可從 mapping 找
                     "股票代號"  = $code
                     "股票名稱"  = $name
