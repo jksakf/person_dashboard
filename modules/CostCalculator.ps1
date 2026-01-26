@@ -56,6 +56,9 @@ function Get-PortfolioStatus {
             $type = $type.Trim()
         }
         
+        # (New) 讀取幣別
+        $currency = if ($t.'幣別') { $t.'幣別' } else { "TWD" }
+
         $qty = [int]$t.'股數'
         $amount = [double]$t.'總金額' # Buy: Cost (inc fee), Sell: Net Proceeds (dec fee/tax)
         
@@ -63,6 +66,7 @@ function Get-PortfolioStatus {
             $portfolio[$code] = [PSCustomObject]@{
                 Code        = $code
                 Name        = $name
+                Currency    = $currency
                 Quantity    = 0
                 TotalCost   = 0.0
                 RealizedPnL = 0.0

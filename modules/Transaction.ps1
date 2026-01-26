@@ -68,11 +68,25 @@ function Invoke-TransactionFlow {
             continue
         }
 
+        # --- (New) 幣別與匯率處理 ---
+        $currency = "TWD"
+        $stockType = $selectedStock.Type
+        
+        if ($stockType -match "HK" -or $stockType -match "港") { $currency = "HKD" }
+        elseif ($stockType -match "US" -or $stockType -match "美") { $currency = "USD" }
+        
+        $exchRate = 1.0
+        if ($currency -ne "TWD") {
+            # 提示輸入匯率 (未來可整合 PriceFetcher 自動抓用)
+            $exchRate = Get-CleanInput -Prompt "請輸入匯率 ($currency -> TWD)" -DefaultValue "4.0" -IsNumber $true
+        }
+
         # --- E. 試算費用 ---
         # 1. 小計
         $subTotal = $price * $qty
         
         # 2. 手續費 (買賣都要) -> 無條件捨去 (通常) 但建議保留整數
+        # [Fix] 港美股手續費結構不同，這裡暫時維持通用，但至少費率可調
         $calFee = [Math]::Floor($subTotal * $feeRate)
         if ($calFee -lt $minFee) { $calFee = $minFee }
 
@@ -82,11 +96,14 @@ function Invoke-TransactionFlow {
             $calTax = [Math]::Floor($subTotal * $taxRate)
         }
 
-        Write-Host "`n📊 費用試算:" -ForegroundColor Yellow
+        Write-Host "`n📊 費用試算 ($currency):" -ForegroundColor Yellow
         Write-Host "   成交金額: $subTotal"
         Write-Host "   預估手續費: $calFee (費率: $($feeRate*100)%, 低消: $minFee)"
         if ($type -eq "賣出") {
             Write-Host "   預估交易稅: $calTax (稅率: $($taxRate*100)%)"
+        }
+        if ($currency -ne "TWD") {
+            Write-Host "   預估總額(台幣): $([math]::Round(($subTotal * $exchRate),0)) (匯率: $exchRate)"
         }
 
         # --- F. 確認或修正費用 ---
@@ -107,7 +124,7 @@ function Invoke-TransactionFlow {
             $totalAmount = $subTotal - $finalFee - $finalTax
         }
 
-        Write-Host "`n💰 最終交割金額: $totalAmount" -ForegroundColor Green
+        Write-Host "`n💰 最終交割金額: $totalAmount ($currency)" -ForegroundColor Green
         
         # --- H. 確認寫入 ---
         $note = Read-Host "備註 (選填)"
@@ -125,6 +142,8 @@ function Invoke-TransactionFlow {
                 '代號'  = $selectedStock.Code
                 '名稱'  = $selectedStock.Name
                 '類別'  = $type
+                '幣別'  = $currency
+                '匯率'  = $exchRate
                 '價格'  = $price
                 '股數'  = $qty
                 '手續費' = $finalFee

@@ -15,8 +15,13 @@ function Get-RealTimePrice {
         if ($MarketType -in "TW", "TSE", "OTC", "ETF" -or $MarketType -match [char]0x53F0) {
             return Get-TwsePrice -Code $Code
         }
-        # 港股 (港=6E2F) / 美股 (美=7F8E)
-        elseif ($MarketType -match "HK" -or $MarketType -match [char]0x6E2F -or $MarketType -match "US" -or $MarketType -match [char]0x7F8E) {
+        # Safe Match for "港股" (港=6E2F)
+        elseif ($MarketType -match "HK" -or $MarketType -match [char]0x6E2F) {
+            # Use Stooq as primary for HK (More reliable without key)
+            return Get-StooqPrice -Code $Code
+        }
+        # 美股 (美=7F8E)
+        elseif ($MarketType -match "US" -or $MarketType -match [char]0x7F8E) {
             return Get-YahooPrice -Code $Code -MarketType $MarketType
         }
         else {
@@ -28,6 +33,39 @@ function Get-RealTimePrice {
         Write-Log "抓取股價失敗 ($Code): $_" -Level Warning
         return $null
     }
+}
+
+function Get-StooqPrice {
+    param ([string]$Code)
+    
+    # Stooq format: 1810.HK (Uppdercase, no leading zero)
+    $cleanCode = [int]$Code
+    $symbol = "${cleanCode}.HK"
+    
+    $url = "https://stooq.com/q/l/?s=$symbol&f=sd2t2ohlc&h&e=csv"
+    
+    try {
+        $content = Invoke-WebRequest -Uri $url -Headers @{ "User-Agent" = "Mozilla/5.0" } -UseBasicParsing -ErrorAction Stop
+        $csvText = $content.Content
+        
+        # Manually parse to avoid Import-Csv overhead on single string
+        $lines = $csvText -split "`n"
+        if ($lines.Count -ge 2) {
+            $dataLine = $lines[1]
+            $cols = $dataLine -split ","
+            if ($cols.Count -ge 7) {
+                $close = $cols[6]
+                if ($close -ne "N/D") {
+                    return [double]$close
+                }
+            }
+        }
+    }
+    catch {
+        Write-Log "Stooq API Error ($symbol): $_" -Level Debug
+    }
+    
+    return $null
 }
 
 function Get-TwsePrice {
@@ -77,10 +115,11 @@ function Get-YahooPrice {
     )
 
     $symbol = $Code
-    if ($MarketType -match "港股|HK") {
-        # 港股代號通常是 4 碼，Yahoo 需要 .HK 後綴
-        # 轉成整數再轉字串可去零? 不，Yahoo 0700.HK
-        $symbol = "${Code}.HK"
+    # Safe Match for "港股" (港=6E2F)
+    if ($MarketType -match "HK" -or $MarketType -match [char]0x6E2F) {
+        # Yahoo Finance expects HK tickers without leading zeros (e.g. 01810 -> 1810.HK)
+        $cleanCode = [int]$Code
+        $symbol = "${cleanCode}.HK"
     }
     # 美股通常直接用代號 (AAPL, NVDA)
 
@@ -98,8 +137,72 @@ function Get-YahooPrice {
     }
     catch {
         Write-Log "Yahoo API Error ($symbol): $_" -Level Debug
+        
+        # Fallback: HTML Scraping
+        Write-Host "   ⚠️ API 失敗，嘗試網頁抓取..." -NoNewline
+        return Get-YahooPriceScrape -Code $symbol
     }
 
+    return $null
+}
+
+function Get-YahooPriceScrape {
+    param ($Code)
+    $url = "https://finance.yahoo.com/quote/$Code"
+    try {
+        $html = Invoke-WebRequest -Uri $url -Headers @{ "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" } -UseBasicParsing -ErrorAction Stop
+        $content = $html.Content
+        
+        # Try fin-streamer regex
+        if ($content -match '<fin-streamer[^>]*data-field="regularMarketPrice"[^>]*value="([\d\.]+)"') {
+            return [double]$matches[1]
+        }
+        # Try JSON regex
+        if ($content -match '"regularMarketPrice":{"raw":([\d\.]+),') {
+            return [double]$matches[1]
+        }
+    }
+    catch {
+        Write-Log "Yahoo Scraping Error ($Code): $_" -Level Debug
+    }
+    return $null
+}
+
+function Get-ExchangeRate {
+    param (
+        [string]$FromCurrency,
+        [string]$ToCurrency = "TWD"
+    )
+
+    if ($FromCurrency -eq $ToCurrency) { return 1.0 }
+
+    # Stooq FX symbol: HKDTWD, USDTWD
+    # Try direct pair first
+    $symbol = "${FromCurrency}${ToCurrency}"
+    
+    # Use Stooq logic
+    $url = "https://stooq.com/q/l/?s=$symbol&f=sd2t2ohlc&h&e=csv"
+    
+    try {
+        $content = Invoke-WebRequest -Uri $url -Headers @{ "User-Agent" = "Mozilla/5.0" } -UseBasicParsing -ErrorAction Stop
+        $csvText = $content.Content
+        
+        $lines = $csvText -split "`n"
+        if ($lines.Count -ge 2) {
+            $dataLine = $lines[1]
+            $cols = $dataLine -split ","
+            if ($cols.Count -ge 7) {
+                $close = $cols[6]
+                if ($close -ne "N/D") {
+                    return [double]$close
+                }
+            }
+        }
+    }
+    catch {
+        Write-Log "Stooq FX Error ($symbol): $_" -Level Debug
+    }
+    
     return $null
 }
 

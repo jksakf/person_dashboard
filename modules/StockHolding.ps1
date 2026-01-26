@@ -58,9 +58,7 @@ function Invoke-StockHoldingFlow {
         # 詢問市價
         while ($true) {
             $promptMsg = "請輸入當前 [股價] (輸入 'skip' 跳過此檔)"
-            if ($autoPrice) {
-                $promptMsg += " [預設: $autoPrice]"
-            }
+
             
             $priceStr = Get-CleanInput -Prompt $promptMsg -Mandatory ($autoPrice -eq $null) -DefaultValue $autoPrice
             if ($priceStr -eq 'skip') { break }
@@ -79,19 +77,46 @@ function Invoke-StockHoldingFlow {
                     $roiStr = "$([math]::Round($roi, 2))%"
                 }
 
+                # (New) 幣別與匯率換算
+                $currency = if ($p.Currency) { $p.Currency } else { "TWD" }
+                $exchRate = 1.0
+                $marketValueTWD = $marketValue
+                
+                if ($currency -ne "TWD") {
+                    # 嘗試抓取匯率
+                    Write-Host "   💱 正在取得 $currency 匯率..." -NoNewline
+                    try {
+                        $rate = Get-ExchangeRate -FromCurrency $currency -ToCurrency "TWD"
+                        if ($rate) { 
+                            $exchRate = $rate
+                            Write-Host " $exchRate" -ForegroundColor Green
+                        }
+                        else { Write-Host " (失敗, 使用 1.0)" -ForegroundColor Yellow }
+                    }
+                    catch { Write-Host " (Error)" -ForegroundColor Red }
+                    
+                    $marketValueTWD = $marketValue * $exchRate
+                }
+
                 $record = [ordered]@{
-                    "日期"    = $dateStr
-                    "市場"    = $market
-                    "股票代號"  = $code
-                    "股票名稱"  = $p.Name
-                    "持有股數"  = $p.Quantity
-                    "總成本"   = [math]::Round($totalCost, 0)
-                    "市值"    = [math]::Round($marketValue, 0)
-                    "未實現損益" = [math]::Round($pnl, 0)
-                    "報酬率%"  = $roiStr
+                    "日期"     = $dateStr
+                    "市場"     = $market
+                    "股票代號"   = $code
+                    "股票名稱"   = $p.Name
+                    "幣別"     = $currency
+                    "持有股數"   = $p.Quantity
+                    "總成本"    = [math]::Round($totalCost, 0)
+                    "市值(原幣)" = [math]::Round($marketValue, 2)
+                    "未實現損益"  = [math]::Round($pnl, 0)
+                    "報酬率%"   = $roiStr
+                    "匯率"     = $exchRate
+                    "市值(台幣)" = [math]::Round($marketValueTWD, 0)
                 }
                 $data.Add([PSCustomObject]$record) | Out-Null
-                Write-Log "✅ 已記錄: $($p.Name) | 市值: $([math]::Round($marketValue,0)) | 損益: $([math]::Round($pnl,0))" -Level Info
+                
+                $logMsg = "$($p.Name) | 市值: $([math]::Round($marketValue,2)) $currency"
+                if ($currency -ne "TWD") { $logMsg += " -> $([math]::Round($marketValueTWD,0)) TWD" }
+                Write-Log "✅ 已記錄: $logMsg | 損益: $([math]::Round($pnl,0))" -Level Info
                 break 
             }
             else {

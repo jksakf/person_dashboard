@@ -60,9 +60,15 @@ function Write-Log {
     # 輸出到檔案 (若有設定)
     if ($Script:Config -and $Script:Config.Logging.LogFile) {
         $logPath = $Script:Config.Logging.LogFile
-        $dir = Split-Path $logPath -Parent
-        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        Add-Content -Path $logPath -Value $formattedMsg -Encoding UTF8
+        try {
+            $dir = Split-Path $logPath -Parent
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            Add-Content -Path $logPath -Value $formattedMsg -Encoding UTF8 -ErrorAction Stop
+        }
+        catch {
+            # 若檔案被鎖定，僅顯示在螢幕上，不應讓程式崩潰
+            Write-Host " [System] Log Write Failed: $_" -ForegroundColor DarkGray
+        }
     }
 }
 
