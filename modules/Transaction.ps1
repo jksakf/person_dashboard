@@ -19,8 +19,8 @@ function Invoke-TransactionFlow {
 
     # 3. 檢查或建立 CSV Header
     if (-not (Test-Path $csvPath)) {
-        # 定義欄位: 日期, 代號, 名稱, 動作(Buy/Sell), 單價, 股數, 手續費, 交易稅, 總金額, 備註
-        "Date,Code,Name,Type,Price,Quantity,Fee,Tax,TotalAmount,Note" | Out-File -FilePath $csvPath -Encoding Unicode
+        # 定義欄位: 日期, 代號, 名稱, 類別, 價格, 股數, 手續費, 交易稅, 總金額, 備註
+        "日期,代號,名稱,類別,價格,股數,手續費,交易稅,總金額,備註" | Out-File -FilePath $csvPath -Encoding Unicode
     }
 
     # 4. 載入股票清單 (用於選取)
@@ -32,7 +32,7 @@ function Invoke-TransactionFlow {
         Write-Host "--------------------------------"
 
         # --- A. 輸入日期 ---
-        $date = Get-DateInput -Prompt "請輸入交易日期 (YYYYMMDD)"
+        $date = Get-ValidDate -Prompt "請輸入交易日期 (YYYYMMDD)"
 
         # --- B. 選擇股票 ---
         $selectedStock = Select-Stock -StockList $stockList
@@ -40,10 +40,10 @@ function Invoke-TransactionFlow {
 
         # --- C. 選擇動作 (買/賣) ---
         $type = ""
-        while ($type -notin "Buy", "Sell") {
+        while ($type -notin "買進", "賣出") {
             $t = Read-Host "請選擇交易類別 (1: 買進 Buy, 2: 賣出 Sell)"
-            if ($t -eq '1') { $type = "Buy" }
-            elseif ($t -eq '2') { $type = "Sell" }
+            if ($t -eq '1') { $type = "買進" }
+            elseif ($t -eq '2') { $type = "賣出" }
         }
 
         # --- D. 輸入價格與股數 ---
@@ -66,21 +66,23 @@ function Invoke-TransactionFlow {
 
         # 3. 交易稅 (僅賣出) -> 四捨五入
         $calTax = 0
-        if ($type -eq "Sell") {
+        # 3. 交易稅 (僅賣出) -> 四捨五入
+        $calTax = 0
+        if ($type -eq "賣出") {
             $calTax = [Math]::Floor($subTotal * $taxRate)
         }
 
         Write-Host "`n📊 費用試算:" -ForegroundColor Yellow
         Write-Host "   成交金額: $subTotal"
         Write-Host "   預估手續費: $calFee (費率: $($feeRate*100)%, 低消: $minFee)"
-        if ($type -eq "Sell") {
+        if ($type -eq "賣出") {
             Write-Host "   預估交易稅: $calTax (稅率: $($taxRate*100)%)"
         }
 
         # --- F. 確認或修正費用 ---
         $finalFee = Get-CleanInput -Prompt "確認手續費 (直接按 Enter 使用試算值 $calFee)" -DefaultValue $calFee -IsNumber $true
         $finalTax = 0
-        if ($type -eq "Sell") {
+        if ($type -eq "賣出") {
             $finalTax = Get-CleanInput -Prompt "確認交易稅 (直接按 Enter 使用試算值 $calTax)" -DefaultValue $calTax -IsNumber $true
         }
 
@@ -88,7 +90,7 @@ function Invoke-TransactionFlow {
         # 買入 = 價金 + 費
         # 賣出 = 價金 - 費 - 稅
         $totalAmount = 0
-        if ($type -eq "Buy") {
+        if ($type -eq "買進") {
             $totalAmount = $subTotal + $finalFee
         }
         else {

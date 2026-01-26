@@ -35,6 +35,7 @@ try {
     . (Join-Path $Script:RootPath "modules/StockHolding.ps1")
     . (Join-Path $Script:RootPath "modules/RealizedPnL.ps1")
     . (Join-Path $Script:RootPath "modules/Transaction.ps1")
+    . (Join-Path $Script:RootPath "modules/CostCalculator.ps1")
     . (Join-Path $Script:RootPath "modules/DataMerger.ps1")
 }
 catch {
