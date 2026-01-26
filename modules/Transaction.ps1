@@ -1,4 +1,4 @@
-# Modules/Transaction.ps1
+﻿# Modules/Transaction.ps1
 
 function Invoke-TransactionFlow {
     Write-Log ">>> 進入 [交易明細錄入] 流程..." -Level Info
@@ -47,8 +47,18 @@ function Invoke-TransactionFlow {
         }
 
         # --- D. 輸入價格與股數 ---
-        $price = Get-CleanInput -Prompt "請輸入成交單價" -IsNumber $true
-        $qty = Get-CleanInput -Prompt "請輸入成交股數" -IsNumber $true
+        $priceStr = Get-CleanInput -Prompt "請輸入成交單價" -IsNumber $true
+        $qtyStr = Get-CleanInput -Prompt "請輸入成交股數" -IsNumber $true
+        
+        try {
+            $price = [decimal]$priceStr
+            $qty = [int]$qtyStr
+        }
+        catch {
+            Write-Host "❌ 輸入格式錯誤，請輸入有效數字" -ForegroundColor Red
+            Pause
+            continue
+        }
         
         if ($price -le 0 -or $qty -le 0) {
             Write-Host "❌ 價格與股數必須大於 0" -ForegroundColor Red
@@ -64,8 +74,6 @@ function Invoke-TransactionFlow {
         $calFee = [Math]::Floor($subTotal * $feeRate)
         if ($calFee -lt $minFee) { $calFee = $minFee }
 
-        # 3. 交易稅 (僅賣出) -> 四捨五入
-        $calTax = 0
         # 3. 交易稅 (僅賣出) -> 四捨五入
         $calTax = 0
         if ($type -eq "賣出") {

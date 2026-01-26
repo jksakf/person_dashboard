@@ -30,18 +30,19 @@ Get-Config | Out-Null
 # 3. 靜態載入 Script (使用 Dot-Sourcing 確保在同一個 Scope)
 # -------------------------------------------------------------
 Write-Log "正在載入腳本..." -Level Info
-try {
-    . (Join-Path $Script:RootPath "modules/BankAsset.ps1")
-    . (Join-Path $Script:RootPath "modules/StockHolding.ps1")
-    . (Join-Path $Script:RootPath "modules/RealizedPnL.ps1")
-    . (Join-Path $Script:RootPath "modules/Transaction.ps1")
-    . (Join-Path $Script:RootPath "modules/CostCalculator.ps1")
-    . (Join-Path $Script:RootPath "modules/DataMerger.ps1")
-}
-catch {
-    Write-Error "載入腳本失敗: $_"
-    Pause
-    exit 1
+$modules = @("BankAsset.ps1", "StockHolding.ps1", "RealizedPnL.ps1", "Transaction.ps1", "CostCalculator.ps1", "DataMerger.ps1")
+foreach ($mod in $modules) {
+    $fullPath = Join-Path $Script:RootPath "modules/$mod"
+    Write-Host "Loading $mod ..." -NoNewline
+    try {
+        . $fullPath
+        Write-Host " OK" -ForegroundColor Green
+    }
+    catch {
+        Write-Host " FAILED" -ForegroundColor Red
+        Write-Error "Error loading $mod : $_"
+        exit 1
+    }
 }
 # -------------------------------------------------------------
 

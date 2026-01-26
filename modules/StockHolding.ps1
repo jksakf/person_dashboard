@@ -5,126 +5,133 @@ function Invoke-StockHoldingFlow {
     
     $data = [System.Collections.ArrayList]::new()
     $defaultDate = Get-Date -Format "yyyyMMdd"
-    
-    # 初始載入
     $stocks = Load-StockList
 
+    # 1. 輸入日期
+    $inputDate = Get-ValidDate -DefaultDate $defaultDate
+    $dateStr = [datetime]::ParseExact($inputDate, "yyyyMMdd", $null).ToString("yyyy/MM/dd")
+
+    # 2. 自動取得庫存狀態
+    Write-Host "🔄 正在從交易紀錄計算庫存狀態..." -ForegroundColor Cyan
     try {
+        $portfolio = Get-PortfolioStatus -TargetDate $inputDate
+    }
+    catch {
+        Write-Log "計算失敗或尚未載入模組: $_" -Level Error
+        $portfolio = @{}
+    }
+
+    # 3. 處理已存在的庫存 (依代號排序)
+    $sortedCodes = $portfolio.Keys | Sort-Object
+    foreach ($code in $sortedCodes) {
+        $p = $portfolio[$code]
+        if ($p.Quantity -le 0) { continue }
+
+        Write-Host "`n--------------------------------"
+        Write-Host "📦 庫存股票: $($p.Name) ($code)" -ForegroundColor Green
+        Write-Host "   持有股數: $($p.Quantity)"
+        Write-Host "   平均成本: $([math]::Round($p.AvgCost, 2))"
+        Write-Host "   總成本  : $([math]::Round($p.TotalCost, 0))"
+
+        # 這裡需要匹配 stock_list.txt 裡的 "市場/類別"
+        # 嘗試從已載入的清單找，找不到預設 "台股"
+        $market = "台股"
+        $foundConfig = $stocks | Where-Object { $_.Code -eq $code } | Select-Object -First 1
+        if ($foundConfig) { $market = $foundConfig.Type }
+
+        # 詢問市價
         while ($true) {
-            Write-Host "`n--- 新增一筆股票庫存 (預設日期: $defaultDate) ---" -ForegroundColor Green
+            $priceStr = Get-CleanInput -Prompt "請輸入當前 [股價] (輸入 'skip' 跳過此檔)" -Mandatory $true
+            if ($priceStr -eq 'skip') { break }
             
-            # 1. 輸入日期
-            $inputDate = Get-ValidDate -DefaultDate $defaultDate
-            $defaultDate = $inputDate
-            $date = [datetime]::ParseExact($inputDate, "yyyyMMdd", $null).ToString("yyyy/MM/dd")
-
-            # 2. 選擇股票
-            $selectedStock = $null
-            $isNewStock = $false
-            $inputCode = ""
-            $inputName = ""
-            $inputType = "" 
-            
-            if ($stocks.Count -gt 0) {
-                # 使用 common.ps1 的顯示函數
-                Show-StockOptionList -Stocks $stocks
+            if ($priceStr -match "^\d+(\.\d+)?$") {
+                $currentPrice = [double]$priceStr
                 
-                $stockInput = Get-CleanInput -Prompt "請輸入編號(選單) 或 代號/名稱(搜尋)"
+                # 計算
+                $marketValue = $currentPrice * $p.Quantity
+                $totalCost = $p.TotalCost
+                $pnl = $marketValue - $totalCost
                 
-                if ($stockInput -match "^\d+$" -and [int]$stockInput -ge 1 -and [int]$stockInput -le $stocks.Count) {
-                    $selectedStock = $stocks[[int]$stockInput - 1]
-                    $inputCode = $selectedStock.Code
-                    $inputName = $selectedStock.Name
-                    $inputType = $selectedStock.Type
-                }
-                else {
-                    $found = $stocks | Where-Object { $_.Code -eq $stockInput -or $_.Name -like "*$stockInput*" }
-                    if ($found) {
-                        if ($found.Count -gt 1) {
-                            Write-Host "⚠️ 找到多筆符合，將視為新輸入..."
-                            $inputCode = $stockInput
-                            $inputName = Get-CleanInput -Prompt "請手動輸入名稱"
-                            $inputType = Get-CleanInput -Prompt "請輸入市場/類別" -DefaultValue "台股"
-                            $isNewStock = $true
-                        }
-                        else {
-                            $selectedStock = $found[0]
-                            $inputCode = $selectedStock.Code
-                            $inputName = $selectedStock.Name
-                            $inputType = $selectedStock.Type
-                            Write-Host "✅ 已選擇: $($inputName) ($($inputCode)) - $inputType"
-                        }
-                    }
-                    else {
-                        $inputCode = $stockInput
-                        $inputName = Get-CleanInput -Prompt "請手動輸入名稱"
-                        $inputType = Get-CleanInput -Prompt "請輸入市場/類別" -DefaultValue "台股"
-                        $isNewStock = $true
-                    }
-                }
-            }
-            else {
-                $inputCode = Get-CleanInput -Prompt "股票代號"
-                $inputName = Get-CleanInput -Prompt "股票名稱"
-                $inputType = Get-CleanInput -Prompt "請輸入市場" -DefaultValue "台股"
-                $isNewStock = $true
-            }
-
-            if ($isNewStock) {
-                $exists = $stocks | Where-Object { $_.Code -eq $inputCode }
-                if (-not $exists) {
-                    $updated = Add-StockToList -code $inputCode -name $inputName -type $inputType
-                    if ($updated) { $stocks = Load-StockList }
-                }
-            }
-
-            # 3. 股數
-            $sharesStr = Get-CleanInput -Prompt "持有股數"
-            if ($sharesStr -notmatch "^\d+$") { Write-Log "❌ 股數必須為正整數" -Level Warning; continue }
-            $shares = [int]$sharesStr
-
-            # 4. 總成本
-            $totalCostStr = Get-CleanInput -Prompt "總成本 (Total Cost)"
-            try { $totalCost = [decimal]$totalCostStr } catch { Write-Log "❌ 金額格式錯誤" -Level Warning; continue }
-
-            # 5. 市值
-            $marketValueStr = Get-CleanInput -Prompt "當前市值 (Market Value)"
-            try { $marketValue = [decimal]$marketValueStr } catch { Write-Log "❌ 金額格式錯誤" -Level Warning; continue }
-
-            # 計算損益
-            $pnl = $marketValue - $totalCost
-            
-            # 報酬率 %
-            if ($totalCost -ne 0) {
-                $roi = ($pnl / $totalCost) * 100
-                $roiStr = "$([math]::Round($roi, 2))%"
-            }
-            else {
                 $roiStr = "0%"
+                if ($totalCost -ne 0) {
+                    $roi = ($pnl / $totalCost) * 100
+                    $roiStr = "$([math]::Round($roi, 2))%"
+                }
+
+                $record = [ordered]@{
+                    "日期"    = $dateStr
+                    "市場"    = $market
+                    "股票代號"  = $code
+                    "股票名稱"  = $p.Name
+                    "持有股數"  = $p.Quantity
+                    "總成本"   = [math]::Round($totalCost, 0)
+                    "市值"    = [math]::Round($marketValue, 0)
+                    "未實現損益" = [math]::Round($pnl, 0)
+                    "報酬率%"  = $roiStr
+                }
+                $data.Add([PSCustomObject]$record) | Out-Null
+                Write-Log "✅ 已記錄: $($p.Name) | 市值: $([math]::Round($marketValue,0)) | 損益: $([math]::Round($pnl,0))" -Level Info
+                break 
+            }
+            else {
+                Write-Host "❌ 價格格式錯誤" -ForegroundColor Red
+            }
+        }
+    }
+
+    # 4. 手動補登其他股票
+    while ($true) {
+        Write-Host "`n--------------------------------"
+        $ans = Get-CleanInput -Prompt "是否手動新增其他股票 (未在交易紀錄中)? (y/N)" -DefaultValue "N" -Mandatory $false
+        if ($ans -notin "y", "Y") { break }
+
+        # --- 手動輸入流程 (簡化版) ---
+        try {
+            Show-StockOptionList -Stocks $stocks
+            $stockInput = Get-CleanInput -Prompt "輸入代號或名稱"
+            
+            # 簡易搜尋邏輯
+            $code = $stockInput
+            $name = $stockInput
+            $market = "台股"
+            
+            # 從清單找名字
+            $found = $stocks | Where-Object { $_.Code -eq $stockInput -or $_.Name -like "*$stockInput*" } | Select-Object -First 1
+            if ($found) {
+                $code = $found.Code
+                $name = $found.Name
+                $market = $found.Type
+                Write-Host "✅ 選定: $name ($code)"
+            }
+            else {
+                $name = Get-CleanInput -Prompt "請輸入名稱"
             }
 
-            # 輸出
+            $qty = [int](Get-CleanInput -Prompt "持有股數" -IsNumber $true)
+            $cost = [double](Get-CleanInput -Prompt "總成本" -IsNumber $true)
+            $price = [double](Get-CleanInput -Prompt "當前股價" -IsNumber $true)
+
+            $marketValue = $price * $qty
+            $pnl = $marketValue - $cost
+            $roiStr = if ($cost -ne 0) { "$([math]::Round(($pnl/$cost)*100, 2))%" } else { "0%" }
+
             $record = [ordered]@{
-                "日期"    = $date
-                "市場"    = $inputType
-                "股票代號"  = $inputCode
-                "股票名稱"  = $inputName
-                "持有股數"  = $shares
-                "總成本"   = $totalCost
-                "市值"    = $marketValue
-                "未實現損益" = $pnl
+                "日期"    = $dateStr
+                "市場"    = $market
+                "股票代號"  = $code
+                "股票名稱"  = $name
+                "持有股數"  = $qty
+                "總成本"   = $cost
+                "市值"    = [math]::Round($marketValue, 0)
+                "未實現損益" = [math]::Round($pnl, 0)
                 "報酬率%"  = $roiStr
             }
             $data.Add([PSCustomObject]$record) | Out-Null
-            Write-Log "✅ 已暫存: $inputName | 市值: $([int]$marketValue) | 損益: $([int]$pnl) ($roiStr)" -Level Info
+            Write-Log "✅ 已手動記錄" -Level Info
+
         }
-    }
-    catch {
-        if ($_.Exception.Message -eq "UserExit") {
-            Write-Host "`n結束輸入。"
-        }
-        else {
-            Write-Error $_
+        catch {
+            Write-Host "❌ 輸入中斷或錯誤" -ForegroundColor Red
         }
     }
 

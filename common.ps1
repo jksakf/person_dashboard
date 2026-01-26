@@ -137,12 +137,13 @@ function Get-CleanInput {
 #>
 function Get-ValidDate {
     param (
-        [string]$DefaultDate = (Get-Date -Format "yyyyMMdd")
+        [string]$DefaultDate = (Get-Date -Format "yyyyMMdd"),
+        [string]$Prompt = "請輸入日期 (YYYYMMDD)"
     )
 
     while ($true) {
         try {
-            $inputStr = Get-CleanInput -Prompt "請輸入日期 (YYYYMMDD)" -DefaultValue $DefaultDate
+            $inputStr = Get-CleanInput -Prompt $Prompt -DefaultValue $DefaultDate
             
             # 長度與數字檢查
             if ($inputStr.Length -ne 8 -or $inputStr -notmatch "^\d{8}$") {
@@ -194,7 +195,12 @@ function Export-DataToCsv {
 
     # 處理相對路徑轉絕對路徑 (若不是絕對路徑，則基於 RootPath)
     if (-not [System.IO.Path]::IsPathRooted($targetDir)) {
-        $targetDir = Join-Path $Script:RootPath $targetDir
+        if ($Script:RootPath) {
+            $targetDir = Join-Path $Script:RootPath $targetDir
+        }
+        else {
+            $targetDir = Resolve-Path $targetDir
+        }
     }
 
     if (-not (Test-Path $targetDir)) { 
@@ -254,6 +260,7 @@ function Load-StockList {
     $list = @()
     if (Test-Path $txtPath) {
         try {
+            # 確保讀取也是 UTF-8
             $lines = Get-Content $txtPath -Encoding UTF8 | Where-Object { $_ -match "\S" }
             foreach ($line in $lines) {
                 $parts = $line -split ","
@@ -334,4 +341,80 @@ function Show-StockOptionList {
         # 序號補齊對齊 (例如 1. vs 10.) -> {0,2}
         Write-Host ("{0,2}. {1}" -f ($i + 1), $Stocks[$i].DisplayText)
     }
+}
+
+<#
+.SYNOPSIS
+    互動式選擇股票 (Common)
+#>
+function Select-Stock {
+    param (
+        $StockList
+    )
+
+    if (-not $StockList -or $StockList.Count -eq 0) {
+        Write-Host "⚠️  股票清單為空，請手動輸入。" -ForegroundColor Yellow
+        # Fallback to manual input
+        $code = Get-CleanInput -Prompt "股票代號"
+        $name = Get-CleanInput -Prompt "股票名稱"
+        $type = Get-CleanInput -Prompt "類別" -DefaultValue "台股"
+        
+        # 詢問是否加入清單
+        Add-StockToList -code $code -name $name -type $type | Out-Null
+        
+        return [PSCustomObject]@{ Code = $code; Name = $name; Type = $type }
+    }
+
+    Show-StockOptionList -Stocks $StockList
+    
+    $stockInput = Get-CleanInput -Prompt "請輸入編號(選單) 或 代號/名稱(搜尋)"
+    
+    $selected = $null
+
+    # Case A: Input is Index Number
+    if ($stockInput -match "^\d+$" -and [int]$stockInput -ge 1 -and [int]$stockInput -le $StockList.Count) {
+        $selected = $StockList[[int]$stockInput - 1]
+    }
+    else {
+        # Case B: Search Code or Name
+        $found = $StockList | Where-Object { $_.Code -eq $stockInput -or $_.Name -like "*$stockInput*" }
+        
+        if ($found) {
+            if ($found.Count -gt 1) {
+                Write-Host "⚠️ 找到多筆符合，請更精確輸入或選擇編號。"
+                # 這裡簡單處理：直接視為新輸入 (或者可以遞迴呼叫自己? 但怕無窮迴圈)
+                # 為了使用者體驗，若找到多筆，可以用名稱完全匹配再試一次
+                $exact = $found | Where-Object { $_.Name -eq $stockInput -or $_.Code -eq $stockInput }
+                if ($exact -and $exact.Count -eq 1) {
+                    $selected = $exact[0]
+                }
+            }
+            else {
+                $selected = $found[0]
+            }
+        }
+    }
+
+    if ($selected) {
+        Write-Host "✅ 已選擇: $($selected.Name) ($($selected.Code))" -ForegroundColor Green
+        return $selected
+    }
+
+    # Case C: Not found / New Stock
+    Write-Host "⚠️  未在清單中找到 '$stockInput'" -ForegroundColor Yellow
+    $ans = Get-CleanInput -Prompt "是否新增此股票? (y:新增, r:重試)" -DefaultValue "y"
+    
+    if ($ans -eq "r") {
+        # Retry
+        return Select-Stock -StockList $StockList
+    }
+
+    # Manual Input
+    $code = $stockInput # Default to input if look like code, but user can change
+    $name = Get-CleanInput -Prompt "請輸入股票名稱"
+    $type = Get-CleanInput -Prompt "請輸入類別" -DefaultValue "台股"
+    
+    Add-StockToList -code $code -name $name -type $type | Out-Null
+    
+    return [PSCustomObject]@{ Code = $code; Name = $name; Type = $type }
 }
