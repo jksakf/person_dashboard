@@ -39,9 +39,30 @@ function Invoke-StockHoldingFlow {
         $foundConfig = $stocks | Where-Object { $_.Code -eq $code } | Select-Object -First 1
         if ($foundConfig) { $market = $foundConfig.Type }
 
+        # 自動抓取股價 (New feature)
+        $autoPrice = $null
+        try {
+            Write-Host "   ⏳ 正在查詢即時股價..." -NoNewline
+            $autoPrice = Get-RealTimePrice -Code $code -MarketType $market
+            if ($autoPrice) {
+                Write-Host " ✅ $autoPrice" -ForegroundColor Green
+            }
+            else {
+                Write-Host " ⚠️ 未取得" -ForegroundColor Gray
+            }
+        }
+        catch {
+            Write-Host " (查詢失敗)" -ForegroundColor Gray
+        }
+
         # 詢問市價
         while ($true) {
-            $priceStr = Get-CleanInput -Prompt "請輸入當前 [股價] (輸入 'skip' 跳過此檔)" -Mandatory $true
+            $promptMsg = "請輸入當前 [股價] (輸入 'skip' 跳過此檔)"
+            if ($autoPrice) {
+                $promptMsg += " [預設: $autoPrice]"
+            }
+            
+            $priceStr = Get-CleanInput -Prompt $promptMsg -Mandatory ($autoPrice -eq $null) -DefaultValue $autoPrice
             if ($priceStr -eq 'skip') { break }
             
             if ($priceStr -match "^\d+(\.\d+)?$") {

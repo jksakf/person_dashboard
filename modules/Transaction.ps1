@@ -25,6 +25,7 @@ function Invoke-TransactionFlow {
 
     # 4. 載入股票清單 (用於選取)
     $stockList = Load-StockList
+    $lastDate = Get-Date -Format "yyyyMMdd"
     
     while ($true) {
         Clear-Host
@@ -32,7 +33,8 @@ function Invoke-TransactionFlow {
         Write-Host "--------------------------------"
 
         # --- A. 輸入日期 ---
-        $date = Get-ValidDate -Prompt "請輸入交易日期 (YYYYMMDD)"
+        $date = Get-ValidDate -Prompt "請輸入交易日期 (YYYYMMDD)" -DefaultDate $lastDate
+        $lastDate = $date # 更新預設日期為本次輸入值
 
         # --- B. 選擇股票 ---
         $selectedStock = Select-Stock -StockList $stockList
@@ -110,10 +112,15 @@ function Invoke-TransactionFlow {
         # --- H. 確認寫入 ---
         $note = Read-Host "備註 (選填)"
         
-        $confirm = Read-Host "`n確認寫入檔案? (Y/N)"
+        $confirm = Get-CleanInput -Prompt "確認寫入檔案? (Y/n)" -DefaultValue "Y"
         if ($confirm -match "^[Yy]") {
+            # 格式化日期: yyyyMMdd -> yyyy/MM/dd
+            $dateFormatted = [datetime]::ParseExact($date, "yyyyMMdd", $null).ToString("yyyy/MM/dd")
+            # 總金額捨棄小數點
+            $finalTotal = [math]::Floor($totalAmount)
+
             # Date,Code,Name,Type,Price,Quantity,Fee,Tax,TotalAmount,Note
-            $record = "$date,$($selectedStock.Code),$($selectedStock.Name),$type,$price,$qty,$finalFee,$finalTax,$totalAmount,$note"
+            $record = "$dateFormatted,$($selectedStock.Code),$($selectedStock.Name),$type,$price,$qty,$finalFee,$finalTax,$finalTotal,$note"
             $record | Out-File -FilePath $csvPath -Append -Encoding Unicode
             Write-Log "已新增交易紀錄: $record" -Level Info
             Write-Host "✅ 儲存成功！" -ForegroundColor Green

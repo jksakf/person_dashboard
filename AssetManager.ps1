@@ -30,7 +30,7 @@ Get-Config | Out-Null
 # 3. 靜態載入 Script (使用 Dot-Sourcing 確保在同一個 Scope)
 # -------------------------------------------------------------
 Write-Log "正在載入腳本..." -Level Info
-$modules = @("BankAsset.ps1", "StockHolding.ps1", "RealizedPnL.ps1", "Transaction.ps1", "CostCalculator.ps1", "DataMerger.ps1")
+$modules = @("BankAsset.ps1", "StockHolding.ps1", "RealizedPnL.ps1", "Transaction.ps1", "CostCalculator.ps1", "DataMerger.ps1", "PriceFetcher.ps1")
 foreach ($mod in $modules) {
     $fullPath = Join-Path $Script:RootPath "modules/$mod"
     Write-Host "Loading $mod ..." -NoNewline
@@ -76,8 +76,15 @@ while ($true) {
             & $selected.Action
         }
         catch {
-            Write-Error "執行功能失敗: $_"
-            Read-Host "執行發生錯誤，按 Enter 鍵繼續..."
+            $err = $_
+            # 使用 "$err" 強制轉字串，並檢查 Exception.Message
+            if ("$err" -match "UserExit" -or $err.Exception.Message -match "UserExit") {
+                Write-Host "`n⚠️  使用者取消操作" -ForegroundColor Yellow
+            }
+            else {
+                Write-Error "執行功能失敗: $err"
+                Read-Host "執行發生錯誤，按 Enter 鍵繼續..."
+            }
         }
     }
     else {
