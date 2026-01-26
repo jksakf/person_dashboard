@@ -81,15 +81,16 @@ ETF,00878,國泰永續高股息
    ==================================
    💰 個人資產資料管理系統 (PowerShell)
    ==================================
-   1. 🏦 輸入銀行資產資料
-   2. 📈 輸入股票庫存資料
-   3. 💸 輸入已實現損益資料
-   4. 🚀 一次輸入全部 (依序執行)
-   5. 🔄 合併所有歷史資料 (產生 Dashboard 用檔案)
+   1. 🏦 銀行資產輸入
+   2. 📈 股票庫存輸入
+   3. 💸 已實現損益輸入
+   4. 🔄 合併年度資料 (Merge CSV)
    0. 🚪 離開
    ==================================
    ```
-4. **重要**：輸入完成後，建議執行選項 `5` **「合併所有歷史資料」**，這會將分散的每日資料合併成三個主要的 CSV 檔案（`merged_bank_assets.csv` 等），方便儀表板一次讀取所有歷史紀錄。
+4. **重要**：輸入完成後，建議執行選項 `4` **「合併年度資料」**，系統將詢問合併範圍：
+    - `[1] 僅 YYYY 年度`：僅合併目前年份的資料。
+    - `[2] 所有歷史交易紀錄`：合併過去所有資料（推薦）。
 
 ---
 
@@ -98,9 +99,9 @@ ETF,00878,國泰永續高股息
 1. 雙擊開啟 `index.html`。
 2. 點擊畫面上的 **「🚀 一鍵載入全部 CSV」** 按鈕（或分別上傳）。
 3. 選擇 `output` 資料夾中對應的合併檔案：
-    - **銀行資產**：`output/merged_bank_assets.csv`
-    - **股票庫存**：`output/merged_stock_holdings.csv`
-    - **已實現損益**：`output/merged_realized_pnl.csv`
+    - **銀行資產**：`output/ALL_HISTORY_merged_bank_assets.csv` (或 `YYYY_merged...`)
+    - **股票庫存**：`output/ALL_HISTORY_merged_stock_holdings.csv` (或 `YYYY_merged...`)
+    - **已實現損益**：`output/ALL_HISTORY_merged_realized_pnl.csv` (或 `YYYY_merged...`)
 
 ---
 
