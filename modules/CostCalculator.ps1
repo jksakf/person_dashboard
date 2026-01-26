@@ -25,12 +25,99 @@ function Get-TransactionData {
         return @()
     }
 
-    # Import CSV
-    $data = Import-Csv -Path $csvPath -Encoding Unicode | Where-Object { $_.'日期' -le $TargetDate }
+    # [Fix] 終極 CSV 讀取 (清洗標題 + 手動解析)
+    $encodings = @("Default", "UTF8", "Unicode") 
+    $targetData = $null
+
+    foreach ($enc in $encodings) {
+        try {
+            # 1. 讀取所有內容 (為了後續 ConvertFrom-Csv)
+            $lines = Get-Content -Path $csvPath -Encoding $enc -ErrorAction Stop
+            if ($lines.Count -eq 0) { continue }
+            
+            # 2. 標題清洗 (修正：僅移除 BOM 與不可見字元，保留引號)
+            # 0xFEFF = BOM, 0x200B = Zero Width Space
+            $lines[0] = $lines[0].Trim([char]0xFEFF, [char]0x200B)
+            
+            # 使用 Regex 移除開頭非文字且非引號的字元 (保留 " )
+            # 這樣可以處理 ï»¿"日期" -> "日期"
+            $lines[0] = $lines[0] -replace "^[^a-zA-Z0-9\p{IsCJKUnifiedIdeographs}`"']+", ""
+            
+            # 標題清洗 2: 去除逗號前後的空白 (避免 "日期, 代號" 導致屬性名變成 " 代號")
+            $lines[0] = $lines[0] -replace "\s*,\s*", ","
+
+            $header = $lines[0]
+            
+            if ($header -match "日期" -or $header -match "Date" -or $header -match "代號") {
+                
+                # 3. 決定分隔符號
+                $delimiter = ","
+                if (($header -split "`t").Count -gt ($header -split ",").Count) {
+                    $delimiter = "`t"
+                }
+
+                # 4. 嘗試轉換
+                try {
+                    $tempData = $lines | ConvertFrom-Csv -Delimiter $delimiter
+                    
+                    if ($tempData.Count -ge 0) {
+                        # Debug: 顯示抓到的屬性
+                        $props = if ($tempData.Count -gt 0) { $tempData[0].PSObject.Properties.Name } else { @() }
+                        # 將屬性強制轉為陣列以避免純字串 `.Count` 或 `[0]` 行為差異
+                        $propsArray = @($props)
+                        
+                        Write-Log "Debug 屬性列表 (第一次): $($propsArray -join ', ')" -Level Info
+
+                        # [Fix] 針對 "單一欄位且包含逗號" 的情況 (代表整行被引號包住)
+                        # 注意：若 Props 是單一字串 "A,B,C"，Count 為 1。
+                        if ($propsArray.Count -eq 1 -and $propsArray[0] -match ",") {
+                            Write-Log "偵測到標題被引號包夾，嘗試移除引號重讀..." -Level Warning
+                            $lines[0] = $lines[0].Trim().Trim('"')
+                            try {
+                                $tempData = $lines | ConvertFrom-Csv -Delimiter $delimiter
+                                $props = if ($tempData.Count -gt 0) { $tempData[0].PSObject.Properties.Name } else { @() }
+                                $propsArray = @($props) #Update array
+                                Write-Log "Debug 屬性列表 (重試後): $($propsArray -join ', ')" -Level Info
+                            }
+                            catch {}
+                        }
+                        
+                        # 寬容檢查：只要包含關鍵字即可
+                        if ($propsArray -match "日期" -or $propsArray -match "代號" -or $propsArray -match "Date") {
+                            $targetData = $tempData
+                            Write-Log "成功識別 CSV 格式 | 編碼: $enc | 分隔符號: $(if($delimiter -eq "`t"){"Tab"}else{"Comma"}) | 筆數: $($tempData.Count)" -Level Info
+                            break
+                        }
+                    }
+                }
+                catch {
+                    # Convert 失敗
+                }
+            }
+        }
+        catch {
+            # 讀取失敗換下一個
+        }
+    }
+
+    if ($targetData) {
+        # [Fix] 日期格式正規化
+        # CSV 日期可能是 2024/01/01，而 TargetDate 是 20260126
+        # 需將 CSV 日期移除 / - 符號後再比較
+        $data = $targetData | Where-Object { 
+            $d = $_.'日期' -replace "[^0-9]", ""  # 移除非數字
+            $checkDate = if ($d) { $d } else { "99999999" } # 若無日期則不過濾(或視為未來?)
+            $checkDate -le $TargetDate 
+        }
+        Write-Log "資料篩選後筆數: $($data.Count) (TargetDate: $TargetDate)" -Level Info
+    }
+    else {
+        Write-Warning "⚠️ 嚴重: 無法識別 CSV 編碼或標題 (已嘗試清洗標題)。將使用預設 Import-Csv 強制讀取。"
+        $data = Import-Csv -Path $csvPath -Encoding Unicode | Where-Object { $_.'日期' -le $TargetDate }
+    }
     
     # Sort by Date ASC (Important for FIFO/Avg Cost)
     $data = $data | Sort-Object '日期'
-    return $data
 }
 
 function Get-PortfolioStatus {
@@ -45,6 +132,18 @@ function Get-PortfolioStatus {
     foreach ($t in $transactions) {
         $code = $t.'代號'
         $name = $t.'名稱'
+        $date = $t.'日期'
+        
+        # [Fix] 防止 CSV 有空行或代號為空導致 Crash
+        if ([string]::IsNullOrWhiteSpace($code)) {
+            # 如果整行都是空的 (Excel 常見問題)，靜默跳過
+            if ([string]::IsNullOrWhiteSpace($name) -and [string]::IsNullOrWhiteSpace($date)) {
+                continue
+            }
+            # 如果有資料但沒代號，才警告
+            Write-Warning "忽略無效交易紀錄 (代號為空): 日期=$date, 名稱=$name"
+            continue
+        }
         $type = $t.'類別'   # 買進 / 賣出
         $qty = [int]$t.'股數'
         $amount = [double]$t.'總金額' # Buy: Cost (inc fee), Sell: Net Proceeds (dec fee/tax)
@@ -123,6 +222,12 @@ function Get-PnLReport {
 
     foreach ($t in $transactions) {
         $code = $t.'代號'
+        
+        # [Fix] 防止 CSV 有空行或代號為空導致 Crash
+        if ([string]::IsNullOrWhiteSpace($code)) {
+            continue
+        }
+
         $name = $t.'名稱'
         $type = $t.'類別'
         $qty = [int]$t.'股數'
