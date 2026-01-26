@@ -284,6 +284,11 @@
                             style="font-size:0.8em; color:var(--success-color)"></span></label>
                     <input type="file" id="pnlFile" accept=".csv" onchange="handleFileUpload(event, 'realizedPnL')">
                 </div>
+                <div class="upload-item">
+                    <label>📝 匯入交易明細 CSV <span id="transStatus"
+                            style="font-size:0.8em; color:var(--success-color)"></span></label>
+                    <input type="file" id="transFile" accept=".csv" onchange="handleFileUpload(event, 'transactions')">
+                </div>
             </div>
         </div>
 
@@ -292,10 +297,24 @@
             <button class="tab-btn active" onclick="openTab('assets')">個人資產</button>
             <button class="tab-btn" onclick="openTab('stocks')">股票庫存</button>
             <button class="tab-btn" onclick="openTab('pnl')">已實現損益</button>
+            <button class="tab-btn" onclick="openTab('history')">交易歷史</button>
+        </div>
+
+        <!-- 4. 交易歷史分頁 -->
+        <div id="history" class="tab-content">
+            <div class="dashboard-card">
+                <h2 class="section-title">交易歷史流水帳</h2>
+                <div id="historyTableContainer" style="overflow-x: auto;">
+                    <div class="placeholder-text">
+                        請上傳交易明細 CSV 檔案以檢視內容
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 1. 個人資產分頁 -->
         <div id="assets" class="tab-content active">
+
             <!-- 日期選擇器 -->
             <div class="dashboard-card"
                 style="padding: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
@@ -514,6 +533,9 @@
                     } else if (fileName.includes('realized_pnl')) {
                         targetType = 'realizedPnL';
                         targetInput = document.getElementById('pnlFile');
+                    } else if (fileName.includes('transactions')) {
+                        targetType = 'transactions';
+                        targetInput = document.getElementById('transFile');
                     }
 
                     if (targetType && targetInput) {
@@ -559,7 +581,8 @@
             let appData = {
                 bankAssets: [],
                 stockHoldings: [],
-                realizedPnL: []
+                realizedPnL: [],
+                transactions: []
             };
 
             let charts = {}; // 儲存圖表實例
@@ -577,7 +600,8 @@
             const SCHEMA = {
                 bankAssets: ["日期", "帳戶名稱", "金額"],
                 stockHoldings: ["日期", "市場", "股票代號", "股票名稱", "持有股數", "總成本", "市值", "未實現損益", "報酬率%"],
-                realizedPnL: ["日期", "市場", "股票代號", "股票名稱", "賣出股數", "總成本", "賣出價", "已實現損益", "報酬率%"]
+                realizedPnL: ["日期", "市場", "股票代號", "股票名稱", "賣出股數", "總成本", "賣出價", "已實現損益", "報酬率%"],
+                transactions: ["日期", "代號", "名稱", "類別", "價格", "股數", "總金額"]
             };
 
             // 輔助函式：解析金額 (處理 "1,000" 字串或數字)
@@ -603,7 +627,8 @@
                     if (!file) return;
 
                     const statusId = type === 'bankAssets' ? 'bankStatus' :
-                        type === 'stockHoldings' ? 'stockStatus' : 'pnlStatus';
+                        type === 'stockHoldings' ? 'stockStatus' :
+                            type === 'realizedPnL' ? 'pnlStatus' : 'transStatus';
                     const statusEl = document.getElementById(statusId);
 
                     statusEl.textContent = "⏳ 讀取中...";
@@ -620,7 +645,9 @@
                                 const meta = results.meta;
 
                                 if (!data || data.length === 0) {
-                                    throw new Error("CSV 檔案內容為空");
+                                    // Modified: Allow empty file (header only)
+                                    console.warn(`[${type}] CSV has no data rows.`);
+                                    // We still check meta.fields to ensure it's a valid empty file
                                 }
 
                                 // 檢查 meta.fields 是否存在
@@ -688,6 +715,15 @@
                                             alert("圖表繪製失敗: " + renderErr.message);
                                         }
                                     }, 50);
+                                } else if (type === 'transactions') {
+                                    setTimeout(() => {
+                                        try {
+                                            renderTransactionHistory();
+                                        } catch (renderErr) {
+                                            console.error("Render Error:", renderErr);
+                                            alert("表格繪製失敗: " + renderErr.message);
+                                        }
+                                    }, 50);
                                 }
                             } catch (err) {
                                 console.error("Processing Error:", err);
@@ -704,8 +740,13 @@
                 } catch (e) {
                     console.error("Global Error in handleFileUpload:", e);
                     alert("發生未預期的錯誤: " + e.message);
-                    if (document.getElementById(type === 'bankAssets' ? 'bankStatus' : type === 'stockHoldings' ? 'stockStatus' : 'pnlStatus')) {
-                        document.getElementById(type === 'bankAssets' ? 'bankStatus' : type === 'stockHoldings' ? 'stockStatus' : 'pnlStatus').textContent = "❌ 錯誤";
+
+                    const statusId = type === 'bankAssets' ? 'bankStatus' :
+                        type === 'stockHoldings' ? 'stockStatus' :
+                            type === 'realizedPnL' ? 'pnlStatus' : 'transStatus';
+
+                    if (document.getElementById(statusId)) {
+                        document.getElementById(statusId).textContent = "❌ 錯誤";
                     }
                 }
             }
@@ -718,7 +759,8 @@
                 appData = {
                     bankAssets: [],
                     stockHoldings: [],
-                    realizedPnL: []
+                    realizedPnL: [],
+                    transactions: []
                 };
 
                 // 2. 銷毀所有圖表
@@ -744,7 +786,7 @@
                     if (el) el.textContent = '(尚未載入資料)';
                 });
 
-                ['bankStatus', 'stockStatus', 'pnlStatus', 'batchUploadStatus'].forEach(id => {
+                ['bankStatus', 'stockStatus', 'pnlStatus', 'transStatus', 'batchUploadStatus'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.textContent = '';
                 });
@@ -752,12 +794,14 @@
                 // 5. 重置表格
                 document.getElementById('stockTableContainer').innerHTML = '<div class="placeholder-text">請上傳股票庫存 CSV 檔案以檢視明細</div>';
                 document.getElementById('pnlTableContainer').innerHTML = '<div class="placeholder-text">請上傳已實現損益 CSV 檔案以檢視明細</div>';
+                document.getElementById('historyTableContainer').innerHTML = '<div class="placeholder-text">請上傳交易明細 CSV 檔案以檢視內容</div>';
 
                 // 6. 清空檔案輸入框
                 document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
 
                 // alert('已清除所有資料！');
             }
+
 
             // 渲染銀行資產圓餅圖 (最新月份)
             // targetDate: 指定要渲染的日期字串 (YYYY/MM/DD)，若無則預設最新
@@ -1189,6 +1233,7 @@
                                 <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">股票代號</th>
                                 <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">股票名稱</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">持有股數</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">平均成本</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總成本</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總市值</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">未實現損益</th>
@@ -1200,6 +1245,11 @@
 
                 data.forEach((item, index) => {
                     const bgColor = index % 2 === 0 ? '#f9f9f9' : '#fff';
+                    const qty = parseMoney(item['持有股數']);
+                    const cost = parseMoney(item['總成本']);
+
+                    const avgCost = qty > 0 ? (cost / qty) : 0;
+
                     const pnl = parseMoney(item['未實現損益']);
                     const pnlColor = pnl >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
                     const returnRate = parseMoney(item['報酬率%']);
@@ -1210,8 +1260,9 @@
                             <td style="padding: 10px; border: 1px solid #ddd;">${item['市場'] || '-'}</td>
                             <td style="padding: 10px; border: 1px solid #ddd;">${item['股票代號'] || '-'}</td>
                             <td style="padding: 10px; border: 1px solid #ddd;">${item['股票名稱'] || '-'}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${parseMoney(item['持有股數']).toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['總成本']).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${qty.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${avgCost.toFixed(2)}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${cost.toLocaleString()}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['市值']).toLocaleString()}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor}; font-weight: 600;">
                                 ${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}
@@ -1219,6 +1270,80 @@
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${returnColor}; font-weight: 600;">
                                 ${returnRate >= 0 ? '+' : ''}${returnRate.toFixed(2)}%
                             </td>
+                        </tr>
+                    `;
+                });
+
+                tableHTML += `
+                        </tbody>
+                    </table>
+                `;
+
+                container.innerHTML = tableHTML;
+            }
+
+            // 渲染交易歷史流水帳
+            function renderTransactionHistory() {
+                const data = appData.transactions || [];
+                const container = document.getElementById('historyTableContainer');
+
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="placeholder-text">尚無交易資料</div>';
+                    return;
+                }
+
+                // 按日期降序排序
+                const sortedData = [...data].sort((a, b) => {
+                    // Date format typically YYYYMMDD in transactions.csv
+                    // or maybe formatted string? The CSV generator outputs "YYYYMMDD".
+                    // But checking logic above, Schema expects "日期".
+                    const dateA = String(a['日期'] || '');
+                    const dateB = String(b['日期'] || '');
+                    return dateB.localeCompare(dateA);
+                });
+
+                let tableHTML = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem;">
+                        <thead style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                            <tr>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">日期</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">代號</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">名稱</th>
+                                <th style="padding: 12px; text-align: center; border: 1px solid #ddd;">類別</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">成交價</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">股數</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總金額 (含稅費)</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">備註</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                sortedData.forEach((item, index) => {
+                    const bgColor = index % 2 === 0 ? '#f9f9f9' : '#fff';
+                    const type = item['類別'];
+                    // Buy usually Red or Green? 
+                    // In Taiwan: Buy = Red (Bull), Sell = Green (Bear). 
+                    // But "Type" label color: 
+                    // Buy -> Expense (Blue/Black?), Sell -> Income.
+                    // Let's use simple badges.
+                    const typeColor = type === '買進' ? '#d32f2f' : (type === '賣出' ? '#388e3c' : '#555');
+                    const typeLabel = `<span style="color: ${typeColor}; font-weight: bold;">${type}</span>`;
+
+                    const price = parseMoney(item['價格']);
+                    const qty = parseMoney(item['股數']);
+                    const total = parseMoney(item['總金額']);
+
+                    tableHTML += `
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['日期'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['代號'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['名稱'] || '-'}</td>
+                            <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${typeLabel}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${price.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${qty.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-weight:bold;">$${total.toLocaleString()}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd; color: #666;">${item['備註'] || ''}</td>
                         </tr>
                     `;
                 });

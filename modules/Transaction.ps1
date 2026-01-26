@@ -18,7 +18,7 @@ function Invoke-TransactionFlow {
     $csvPath = Join-Path $transDir "transactions.csv"
 
     # 3. 檢查或建立 CSV Header
-    if (-not (Test-Path $csvPath)) {
+    if (-not (Test-Path $csvPath) -or (Get-Item $csvPath).Length -eq 0) {
         # 定義欄位: 日期, 代號, 名稱, 類別, 價格, 股數, 手續費, 交易稅, 總金額, 備註
         "日期,代號,名稱,類別,價格,股數,手續費,交易稅,總金額,備註" | Out-File -FilePath $csvPath -Encoding Unicode
     }
