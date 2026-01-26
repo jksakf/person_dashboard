@@ -34,6 +34,7 @@ try {
     . (Join-Path $Script:RootPath "modules/BankAsset.ps1")
     . (Join-Path $Script:RootPath "modules/StockHolding.ps1")
     . (Join-Path $Script:RootPath "modules/RealizedPnL.ps1")
+    . (Join-Path $Script:RootPath "modules/Transaction.ps1")
     . (Join-Path $Script:RootPath "modules/DataMerger.ps1")
 }
 catch {
@@ -53,7 +54,8 @@ while ($true) {
         "1" = @{ Description = "銀行資產輸入"; Action = { Invoke-BankAssetFlow } }
         "2" = @{ Description = "股票庫存輸入"; Action = { Invoke-StockHoldingFlow } }
         "3" = @{ Description = "已實現損益輸入"; Action = { Invoke-RealizedPnLFlow } }
-        "4" = @{ Description = "合併年度資料 (Merge CSV)"; Action = { Invoke-DataMergerFlow } }
+        "4" = @{ Description = "錄入交易明細 (New Transaction)"; Action = { Invoke-TransactionFlow } }
+        "5" = @{ Description = "合併年度資料 (Merge CSV)"; Action = { Invoke-DataMergerFlow } }
     }
     
     Show-Menu -Title "個人資產資料管理系統 (PowerShell)" -Options $menuOptions

@@ -7,5 +7,10 @@
     "Defaults": {
         "DateFormat": "yyyyMMdd",
         "CsvEncoding": "Unicode"
+    },
+    "Transaction": {
+        "FeeRate": 0.001425,
+        "TaxRate": 0.003,
+        "MinFee": 20
     }
 }
