@@ -22,7 +22,14 @@ function Get-RealTimePrice {
         }
         # 美股 (美=7F8E)
         elseif ($MarketType -match "US" -or $MarketType -match [char]0x7F8E) {
-            return Get-YahooPrice -Code $Code -MarketType $MarketType
+            # Primary: Use Stooq (more stable, no key required)
+            $price = Get-StooqUSPrice -Code $Code
+            if (-not $price) {
+                # Fallback: Yahoo (if Stooq fails)
+                Write-Log "Stooq US failed for $Code, fallback to Yahoo" -Level Debug
+                $price = Get-YahooPrice -Code $Code -MarketType $MarketType
+            }
+            return $price
         }
         else {
             Write-Log "不支援的市場類型: $MarketType" -Level Warning
@@ -63,6 +70,38 @@ function Get-StooqPrice {
     }
     catch {
         Write-Log "Stooq API Error ($symbol): $_" -Level Debug
+    }
+    
+    return $null
+}
+
+function Get-StooqUSPrice {
+    param ([string]$Code)
+    
+    # Stooq format for US stocks: AAPL.US, NVDA.US
+    $symbol = "${Code}.US"
+    
+    $url = "https://stooq.com/q/l/?s=$symbol&f=sd2t2ohlc&h&e=csv"
+    
+    try {
+        $content = Invoke-WebRequest -Uri $url -Headers @{ "User-Agent" = "Mozilla/5.0" } -UseBasicParsing -ErrorAction Stop
+        $csvText = $content.Content
+        
+        # Manually parse CSV
+        $lines = $csvText -split "`n"
+        if ($lines.Count -ge 2) {
+            $dataLine = $lines[1]
+            $cols = $dataLine -split ","
+            if ($cols.Count -ge 7) {
+                $close = $cols[6]
+                if ($close -ne "N/D") {
+                    return [double]$close
+                }
+            }
+        }
+    }
+    catch {
+        Write-Log "Stooq US API Error ($symbol): $_" -Level Debug
     }
     
     return $null
