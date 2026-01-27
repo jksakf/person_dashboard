@@ -599,7 +599,7 @@
             // CSV 欄位定義 (用於驗證檔案類型)
             const SCHEMA = {
                 bankAssets: ["日期", "帳戶名稱", "金額"],
-                stockHoldings: ["日期", "市場", "股票代號", "股票名稱", "持有股數", "總成本", "市值", "未實現損益", "報酬率%"],
+                stockHoldings: ["日期", "市場", "股票代號", "股票名稱", "持有股數", "總成本"], // 放寬檢查，支援新舊版欄位
                 realizedPnL: ["日期", "市場", "股票代號", "股票名稱", "賣出股數", "總成本", "賣出價", "已實現損益", "報酬率%"],
                 transactions: ["日期", "代號", "名稱", "類別", "價格", "股數", "總金額"]
             };
@@ -1128,7 +1128,7 @@
                 }
 
                 // 5. 計算總市值與總未實現損益
-                const totalMarketValue = currentData.reduce((sum, item) => sum + parseMoney(item['市值']), 0);
+                const totalMarketValue = currentData.reduce((sum, item) => sum + parseMoney(item['市值(台幣)'] || item['市值']), 0);
                 const totalUnrealizedPnL = currentData.reduce((sum, item) => sum + parseMoney(item['未實現損益']), 0);
 
                 // 6. 更新 DOM
@@ -1142,7 +1142,7 @@
 
                 // 7. 準備圓餅圖資料
                 const labels = currentData.map(item => item['股票名稱'] || item['股票代號']);
-                const marketValues = currentData.map(item => parseMoney(item['市值']));
+                const marketValues = currentData.map(item => parseMoney(item['市值(台幣)'] || item['市值']));
 
                 // 8. 繪製圓餅圖
                 const ctx = document.getElementById('stockPieChart').getContext('2d');
@@ -1235,7 +1235,8 @@
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">持有股數</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">平均成本</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總成本</th>
-                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總市值</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">幣別</th>
+                                <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總市值(台幣)</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">未實現損益</th>
                                 <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">報酬率%</th>
                             </tr>
@@ -1261,9 +1262,10 @@
                             <td style="padding: 10px; border: 1px solid #ddd;">${item['股票代號'] || '-'}</td>
                             <td style="padding: 10px; border: 1px solid #ddd;">${item['股票名稱'] || '-'}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${qty.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${avgCost.toFixed(2)}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${avgCost.toFixed(1)}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${cost.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['市值']).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${item['幣別'] || 'TWD'}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['市值(台幣)'] || item['市值']).toLocaleString()}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor}; font-weight: 600;">
                                 ${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}
                             </td>

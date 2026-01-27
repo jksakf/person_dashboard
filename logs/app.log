@@ -1364,3 +1364,33 @@ window.location.replace('https://' + window.location.host + '/?err=404');
 [2026-01-27 16:56:49] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)
 [2026-01-27 16:57:13] [Info] >>> 進入 [刪除交易紀錄] 流程...
 [2026-01-27 16:57:19] [Info] 已刪除 1 筆交易紀錄
+[2026-01-27 17:00:34] [Info] >>> 正在啟動 [股票庫存] 模組...
+[2026-01-27 17:00:34] [Info] 已載入股票列表 (18 筆)
+[2026-01-27 17:00:42] [Info] ✅ 已記錄: 小米集團-W | 市值: 7044 TWD | 損益: -34520
+[2026-01-27 17:00:44] [Info] ✅ 已記錄: 地平線機器人-W | 市值: 26700 TWD | 損益: -58199
+[2026-01-27 17:00:46] [Info] ✅ 已記錄: 長興 | 市值: 24480 TWD | 損益: -1569
+[2026-01-27 17:00:47] [Info] ✅ 已記錄: 華邦電 | 市值: 11550 TWD | 損益: 2547
+[2026-01-27 17:00:48] [Info] ✅ 已記錄: 威剛 | 市值: 17800 TWD | 損益: 3895
+[2026-01-27 17:00:49] [Info] ✅ 已記錄: 群創 | 市值: 23050 TWD | 損益: 2492
+[2026-01-27 17:00:51] [Info] ✅ 已記錄: 三集瑞-KY | 市值: 20000 TWD | 損益: 993
+[2026-01-27 17:00:51] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)
+[2026-01-27 17:00:59] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-01-27 17:00:59] [Info] 已載入股票列表 (18 筆)
+[2026-01-27 17:01:02] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)
+[2026-01-27 17:01:19] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-01-27 17:01:19] [Info] 已載入股票列表 (18 筆)
+[2026-01-27 17:01:22] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)
+[2026-01-27 17:05:11] [Info] 正在載入腳本...
+[2026-01-27 17:05:14] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-01-27 17:05:14] [Info] 已載入股票列表 (18 筆)
+[2026-01-27 17:05:17] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)
+[2026-01-27 17:05:24] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-01-27 17:05:24] [Info] 已載入股票列表 (18 筆)
+[2026-01-27 17:05:26] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)
+[2026-01-27 17:12:08] [Info] 正在載入腳本...
+[2026-01-27 17:12:09] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-01-27 17:12:09] [Info] 已載入股票列表 (18 筆)
+[2026-01-27 17:12:12] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)
+[2026-01-27 17:13:31] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-01-27 17:13:31] [Info] 已載入股票列表 (18 筆)
+[2026-01-27 17:13:34] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260127_stock_holdings.csv (筆數: 7)

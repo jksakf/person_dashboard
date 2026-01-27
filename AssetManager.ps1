@@ -64,7 +64,7 @@ while ($true) {
     
     Show-Menu -Title "個人資產資料管理系統 (PowerShell)" -Options $menuOptions
 
-    $choice = Read-Host "👉 請選擇功能 [0-6]"
+    $choice = Read-Host "👉 請選擇功能 [0-7]"
     
     if ($choice -eq '0') {
         Write-Host "`n👋 謝謝使用，再見！" -ForegroundColor Cyan
