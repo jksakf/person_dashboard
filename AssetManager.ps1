@@ -58,11 +58,12 @@ while ($true) {
         "3" = @{ Description = "已實現損益輸入"; Action = { Invoke-RealizedPnLFlow } }
         "4" = @{ Description = "錄入交易明細 (New Transaction)"; Action = { Invoke-TransactionFlow } }
         "5" = @{ Description = "合併年度資料 (Merge CSV)"; Action = { Invoke-DataMergerFlow } }
+        "6" = @{ Description = "🗑️ 刪除交易紀錄"; Action = { Invoke-DeleteTransactionFlow } }
     }
     
     Show-Menu -Title "個人資產資料管理系統 (PowerShell)" -Options $menuOptions
 
-    $choice = Read-Host "👉 請選擇功能 [0-4]"
+    $choice = Read-Host "👉 請選擇功能 [0-6]"
     
     if ($choice -eq '0') {
         Write-Host "`n👋 謝謝使用，再見！" -ForegroundColor Cyan

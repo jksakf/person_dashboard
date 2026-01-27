@@ -173,8 +173,21 @@ function Get-PnLReport {
             # 若此交易發生在目標年份，則記錄
             # 如果 TargetYear 是 "ALL"，則全部記錄
             if ($TargetYear -eq "ALL" -or $date.StartsWith($TargetYear)) {
+                
+                # (New) 匯率轉換邏輯
+                # 預設匯率 1.0
+                $exchRate = 1.0
+                if ($t.'匯率' -match "^\d+(\.\d+)?$") {
+                    $exchRate = [double]$t.'匯率'
+                }
+
+                # 應用匯率至 TWD 數值
+                $cogsTWD = $cogs * $exchRate
+                $amountTWD = $amount * $exchRate
+                $pnlTWD = $pnl * $exchRate
+                
                 $roi = 0
-                if ($cogs -ne 0) { $roi = ($pnl / $cogs) * 100 }
+                if ($cogsTWD -ne 0) { $roi = ($pnlTWD / $cogsTWD) * 100 }
                 
                 $record = [ordered]@{
                     "日期"    = [datetime]::Parse($date).ToString("yyyy/MM/dd")
@@ -182,10 +195,11 @@ function Get-PnLReport {
                     "股票代號"  = $code
                     "股票名稱"  = $name
                     "賣出股數"  = $qty
-                    "總成本"   = [math]::Round($cogs, 0)
-                    "賣出價"   = [math]::Round($amount, 0) # 這是淨收入
-                    "已實現損益" = [math]::Round($pnl, 0)
+                    "總成本"   = [math]::Round($cogsTWD, 0)
+                    "賣出價"   = [math]::Round($amountTWD, 0) # 這是淨收入
+                    "已實現損益" = [math]::Round($pnlTWD, 0)
                     "報酬率%"  = "$([math]::Round($roi, 2))%"
+                    "匯率"    = $exchRate
                 }
                 $pnlRecords.Add([PSCustomObject]$record) | Out-Null
             }

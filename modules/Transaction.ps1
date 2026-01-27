@@ -166,3 +166,134 @@ function Invoke-TransactionFlow {
         if ($next -match "^[Nn]") { break }
     }
 }
+
+function Invoke-DeleteTransactionFlow {
+    Write-Log ">>> 進入 [刪除交易紀錄] 流程..." -Level Info
+    
+    # 1. 準備路徑
+    $config = $Script:Config
+    $outputDir = if ($config.OutputDirectory) { $config.OutputDirectory } else { "output" }
+    $transDir = Join-Path $outputDir "history_data/Transactions"
+    $csvPath = Join-Path $transDir "transactions.csv"
+    
+    # 2. 檢查檔案
+    if (-not (Test-Path $csvPath)) {
+        Write-Host "⚠️  查無交易紀錄檔案" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    # 3. 讀取資料
+    $data = Import-Csv $csvPath -Encoding Unicode
+    
+    if ($data.Count -eq 0) {
+        Write-Host "⚠️  目前無交易紀錄" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    Clear-Host
+    Write-Host "🗑️  刪除交易紀錄" -ForegroundColor Cyan
+    Write-Host "================================" -ForegroundColor Cyan
+    
+    # 4. 列出最近 20 筆（倒序）
+    $displayCount = [Math]::Min(20, $data.Count)
+    $recentData = $data | Select-Object -Last $displayCount
+    [array]::Reverse($recentData)
+    
+    Write-Host "`n最近 $displayCount 筆交易紀錄：`n" -ForegroundColor Yellow
+    Write-Host ("{0,-4} {1,-12} {2,-8} {3,-12} {4,-6} {5,12}" -f "編號", "日期", "代號", "名稱", "類別", "總金額") -ForegroundColor Gray
+    Write-Host ("-" * 60) -ForegroundColor Gray
+    
+    for ($i = 0; $i -lt $recentData.Count; $i++) {
+        $item = $recentData[$i]
+        $num = $i + 1
+        Write-Host ("{0,-4} {1,-12} {2,-8} {3,-12} {4,-6} {5,12}" -f $num, $item.'日期', $item.'代號', $item.'名稱', $item.'類別', $item.'總金額')
+    }
+    
+    # 5. 輸入要刪除的編號
+    Write-Host "`n" -NoNewline
+    $userInput = Read-Host "請輸入要刪除的編號 (可用逗號分隔多筆，例如: 1,3,5 / 輸入 0 取消)"
+    
+    if ($userInput -eq '0' -or [string]::IsNullOrWhiteSpace($userInput)) {
+        Write-Host "❌ 已取消" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    # 6. 解析輸入的編號
+    $indices = @()
+    $inputParts = $userInput -split ',' | ForEach-Object { $_.Trim() }
+    
+    foreach ($part in $inputParts) {
+        if ($part -match '^\d+$') {
+            $idx = [int]$part
+            if ($idx -ge 1 -and $idx -le $recentData.Count) {
+                $indices += $idx
+            }
+            else {
+                Write-Host "⚠️  編號 $idx 超出範圍，已忽略" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    if ($indices.Count -eq 0) {
+        Write-Host "❌ 無有效的編號" -ForegroundColor Red
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    # 7. 顯示選定項目
+    $toDelete = @()
+    Write-Host "`n將刪除以下 $($indices.Count) 筆紀錄：`n" -ForegroundColor Red
+    
+    foreach ($idx in $indices | Sort-Object -Unique) {
+        $item = $recentData[$idx - 1]
+        $toDelete += $item
+        Write-Host "  [$idx] $($item.'日期') | $($item.'代號') $($item.'名稱') | $($item.'類別') | $($item.'總金額')" -ForegroundColor Red
+    }
+    
+    # 8. 確認刪除
+    Write-Host "`n" -NoNewline
+    $confirm = Read-Host "確認刪除? (Y/N)"
+    
+    if ($confirm -notmatch '^[Yy]') {
+        Write-Host "❌ 已取消" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    # 9. 執行刪除（從原始資料中移除）
+    $remainingData = @()
+    foreach ($item in $data) {
+        $shouldDelete = $false
+        foreach ($delItem in $toDelete) {
+            # 比對多個欄位確保唯一性
+            if ($item.'日期' -eq $delItem.'日期' -and 
+                $item.'代號' -eq $delItem.'代號' -and
+                $item.'名稱' -eq $delItem.'名稱' -and
+                $item.'類別' -eq $delItem.'類別' -and
+                $item.'總金額' -eq $delItem.'總金額') {
+                $shouldDelete = $true
+                break
+            }
+        }
+        if (-not $shouldDelete) {
+            $remainingData += $item
+        }
+    }
+    
+    # 10. 寫回檔案
+    if ($remainingData.Count -gt 0) {
+        $remainingData | Export-Csv $csvPath -NoTypeInformation -Encoding Unicode -Force
+    }
+    else {
+        # 若刪除後為空，只保留標頭
+        "日期,代號,名稱,類別,幣別,匯率,價格,股數,手續費,交易稅,總金額,備註" | Out-File -FilePath $csvPath -Encoding Unicode
+    }
+    
+    Write-Host "`n✅ 成功刪除 $($toDelete.Count) 筆紀錄！" -ForegroundColor Green
+    Write-Log "已刪除 $($toDelete.Count) 筆交易紀錄" -Level Info
+    
+    Read-Host "`n按 Enter 鍵繼續..."
+}
