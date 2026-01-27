@@ -1,5 +1,44 @@
 ﻿# Modules/Transaction.ps1
 
+# Helper function to calculate display width (Chinese chars = 2, others = 1)
+function Get-DisplayWidth {
+    param([string]$Text)
+    $width = 0
+    foreach ($char in $Text.ToCharArray()) {
+        # Chinese/Japanese/Korean characters (CJK) typically have code points > 0x3000
+        if ([int][char]$char -gt 0x3000) {
+            $width += 2
+        }
+        else {
+            $width += 1
+        }
+    }
+    return $width
+}
+
+# Helper function to pad string based on display width
+function Format-DisplayPad {
+    param(
+        [string]$Text,
+        [int]$TargetWidth,
+        [bool]$PadLeft = $false
+    )
+    $currentWidth = Get-DisplayWidth $Text
+    $paddingNeeded = $TargetWidth - $currentWidth
+    
+    if ($paddingNeeded -le 0) {
+        return $Text
+    }
+    
+    $padding = " " * $paddingNeeded
+    if ($PadLeft) {
+        return $padding + $Text
+    }
+    else {
+        return $Text + $padding
+    }
+}
+
 function Invoke-TransactionFlow {
     Write-Log ">>> 進入 [交易明細錄入] 流程..." -Level Info
 
@@ -165,4 +204,129 @@ function Invoke-TransactionFlow {
         $next = Read-Host "`n繼續輸入下一筆? (Y/N) [預設 Y]"
         if ($next -match "^[Nn]") { break }
     }
+}
+
+function Invoke-DeleteTransactionFlow {
+    Write-Log ">>> 進入 [刪除交易紀錄] 流程..." -Level Info
+    
+    $config = $Script:Config
+    $outputDir = if ($config.OutputDirectory) { $config.OutputDirectory } else { "output" }
+    $transDir = Join-Path $outputDir "history_data/Transactions"
+    $csvPath = Join-Path $transDir "transactions.csv"
+    
+    if (-not (Test-Path $csvPath)) {
+        Write-Host "⚠️  查無交易紀錄檔案" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    $data = Import-Csv $csvPath -Encoding Unicode
+    
+    if ($data.Count -eq 0) {
+        Write-Host "⚠️  目前無交易紀錄" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    Clear-Host
+    Write-Host "🗑️  刪除交易紀錄" -ForegroundColor Cyan
+    Write-Host "================================" -ForegroundColor Cyan
+    
+    $displayCount = [Math]::Min(20, $data.Count)
+    $recentData = $data | Select-Object -Last $displayCount
+    [array]::Reverse($recentData)
+    
+    Write-Host "`n最近 $displayCount 筆交易紀錄：`n" -ForegroundColor Yellow
+    Write-Host "編號  日期          代號        名稱                      類別        總金額" -ForegroundColor Gray
+    Write-Host ("=" * 78) -ForegroundColor Gray
+    
+    for ($i = 0; $i -lt $recentData.Count; $i++) {
+        $item = $recentData[$i]
+        $num = Format-DisplayPad ($i + 1).ToString() 4
+        $date = Format-DisplayPad $item.'日期' 12
+        $code = Format-DisplayPad $item.'代號' 10
+        $name = Format-DisplayPad $item.'名稱' 24
+        $type = Format-DisplayPad $item.'類別' 10
+        $amount = Format-DisplayPad $item.'總金額'.ToString() 10 $true
+        
+        Write-Host "$num  $date  $code  $name  $type  $amount"
+    }
+    
+    Write-Host "`n" -NoNewline
+    $userInput = Read-Host "請輸入要刪除的編號 (可用逗號分隔多筆，例如: 1,3,5 / 輸入 0 取消)"
+    
+    if ($userInput -eq '0' -or [string]::IsNullOrWhiteSpace($userInput)) {
+        Write-Host "❌ 已取消" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    $indices = @()
+    $inputParts = $userInput -split ',' | ForEach-Object { $_.Trim() }
+    
+    foreach ($part in $inputParts) {
+        if ($part -match '^\d+$') {
+            $idx = [int]$part
+            if ($idx -ge 1 -and $idx -le $recentData.Count) {
+                $indices += $idx
+            }
+            else {
+                Write-Host "⚠️  編號 $idx 超出範圍，已忽略" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    if ($indices.Count -eq 0) {
+        Write-Host "❌ 無有效的編號" -ForegroundColor Red
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    $toDelete = @()
+    Write-Host "`n將刪除以下 $($indices.Count) 筆紀錄：`n" -ForegroundColor Red
+    
+    foreach ($idx in $indices | Sort-Object -Unique) {
+        $item = $recentData[$idx - 1]
+        $toDelete += $item
+        Write-Host "  [$idx] $($item.'日期') | $($item.'代號') $($item.'名稱') | $($item.'類別') | $($item.'總金額')" -ForegroundColor Red
+    }
+    
+    Write-Host "`n" -NoNewline
+    $confirm = Read-Host "確認刪除? (Y/N)"
+    
+    if ($confirm -notmatch '^[Yy]') {
+        Write-Host "❌ 已取消" -ForegroundColor Yellow
+        Read-Host "`n按 Enter 鍵繼續..."
+        return
+    }
+    
+    $remainingData = @()
+    foreach ($item in $data) {
+        $shouldDelete = $false
+        foreach ($delItem in $toDelete) {
+            if ($item.'日期' -eq $delItem.'日期' -and 
+                $item.'代號' -eq $delItem.'代號' -and
+                $item.'名稱' -eq $delItem.'名稱' -and
+                $item.'類別' -eq $delItem.'類別' -and
+                $item.'總金額' -eq $delItem.'總金額') {
+                $shouldDelete = $true
+                break
+            }
+        }
+        if (-not $shouldDelete) {
+            $remainingData += $item
+        }
+    }
+    
+    if ($remainingData.Count -gt 0) {
+        $remainingData | Export-Csv $csvPath -NoTypeInformation -Encoding Unicode -Force
+    }
+    else {
+        "日期,代號,名稱,類別,幣別,匯率,價格,股數,手續費,交易稅,總金額,備註" | Out-File -FilePath $csvPath -Encoding Unicode
+    }
+    
+    Write-Host "`n✅ 成功刪除 $($toDelete.Count) 筆紀錄！" -ForegroundColor Green
+    Write-Log "已刪除 $($toDelete.Count) 筆交易紀錄" -Level Info
+    
+    Read-Host "`n按 Enter 鍵繼續..."
 }
