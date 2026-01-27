@@ -139,7 +139,7 @@ function Get-PnLReport {
     # 僅篩選當年度的賣出，但需重跑所有歷史以計算正確成本
     $pnlRecords = [System.Collections.ArrayList]::new()
     
-    # 臨時庫存狀態 (用於 Replay)
+    # 臨時庫存狀態 (用於 Replay) - 改用 FIFO
     $portfolio = @{} 
 
     foreach ($t in $transactions) {
@@ -151,66 +151,73 @@ function Get-PnLReport {
         $date = $t.'日期'
         
         if (-not $portfolio.ContainsKey($code)) {
+            # 使用佇列（Queue）追蹤每批買入
             $portfolio[$code] = [PSCustomObject]@{
-                Quantity  = 0
-                TotalCost = 0.0
+                Batches = [System.Collections.Generic.Queue[PSCustomObject]]::new()
+                Name    = $name
             }
         }
         $p = $portfolio[$code]
 
         if ($type -eq "買進") {
-            $p.Quantity += $qty
-            $p.TotalCost += $amount
+            # 記錄這批買入
+            $batch = [PSCustomObject]@{
+                Quantity  = $qty
+                TotalCost = $amount
+            }
+            $p.Batches.Enqueue($batch)
         }
         elseif ($type -eq "賣出") {
-            if ($p.Quantity -eq 0) { continue }
-
-            # 計算當下平均成本
-            $avgCost = $p.TotalCost / $p.Quantity
-            $cogs = $avgCost * $qty
+            if ($p.Batches.Count -eq 0) { continue }
+            
+            # FIFO: 從最早買入的批次開始賣出
+            $remainingToSell = $qty
+            $totalCogs = 0.0
+            
+            while ($remainingToSell -gt 0 -and $p.Batches.Count -gt 0) {
+                $batch = $p.Batches.Peek()  # 查看最早的批次
+                
+                if ($batch.Quantity -le $remainingToSell) {
+                    # 這批全部賣掉
+                    $totalCogs += $batch.TotalCost
+                    $remainingToSell -= $batch.Quantity
+                    $p.Batches.Dequeue() | Out-Null  # 移除這批
+                }
+                else {
+                    # 這批部分賣掉
+                    $avgCost = $batch.TotalCost / $batch.Quantity
+                    $partialCost = $avgCost * $remainingToSell
+                    $totalCogs += $partialCost
+                    
+                    # 更新剩餘
+                    $batch.Quantity -= $remainingToSell
+                    $batch.TotalCost -= $partialCost
+                    $remainingToSell = 0
+                }
+            }
+            
+            $cogs = $totalCogs
             $pnl = $amount - $cogs
             
             # 若此交易發生在目標年份，則記錄
-            # 如果 TargetYear 是 "ALL"，則全部記錄
             if ($TargetYear -eq "ALL" -or $date.StartsWith($TargetYear)) {
                 
-                # (New) 匯率轉換邏輯
-                # 預設匯率 1.0
-                $exchRate = 1.0
-                if ($t.'匯率' -match "^\d+(\.\d+)?$") {
-                    $exchRate = [double]$t.'匯率'
-                }
-
-                # 應用匯率至 TWD 數值
-                $cogsTWD = $cogs * $exchRate
-                $amountTWD = $amount * $exchRate
-                $pnlTWD = $pnl * $exchRate
-                
                 $roi = 0
-                if ($cogsTWD -ne 0) { $roi = ($pnlTWD / $cogsTWD) * 100 }
+                if ($cogs -ne 0) { $roi = ($pnl / $cogs) * 100 }
                 
                 $record = [ordered]@{
                     "日期"    = [datetime]::Parse($date).ToString("yyyy/MM/dd")
-                    "市場"    = "台股" # 暫定，可從 mapping 找
+                    "市場"    = "台股"
                     "股票代號"  = $code
-                    "股票名稱"  = $name
+                    "股票名稱"  = $p.Name
                     "賣出股數"  = $qty
-                    "總成本"   = [math]::Round($cogsTWD, 0)
-                    "賣出價"   = [math]::Round($amountTWD, 0) # 這是淨收入
-                    "已實現損益" = [math]::Round($pnlTWD, 0)
+                    "總成本"   = [math]::Round($cogs, 0)
+                    "賣出價"   = [math]::Round($amount, 0)
+                    "已實現損益" = [math]::Round($pnl, 0)
                     "報酬率%"  = "$([math]::Round($roi, 2))%"
-                    "匯率"    = $exchRate
+                    "匯率"    = "1.0"
                 }
                 $pnlRecords.Add([PSCustomObject]$record) | Out-Null
-            }
-
-            # 更新庫存
-            $p.Quantity -= $qty
-            $p.TotalCost -= $cogs
-            
-            if ($p.Quantity -le 0) {
-                $p.Quantity = 0
-                $p.TotalCost = 0
             }
         }
     }

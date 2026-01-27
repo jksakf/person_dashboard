@@ -1,0 +1,1 @@
+$d = Import-Csv output/history_data/Transactions/transactions.csv -Encoding Unicode; $r = @(53, 55, 56, 57, 59); $q = 0; $c = 0; foreach ($i in $r) { $t = $d[$i]; $a = [double]$t.'總金額'; $n = [int]$t.'股數'; if ($t.'類別' -eq '買進') { $q += $n; $c += $a }elseif ($t.'類別' -eq '賣出' -and $q -gt 0) { $avg = $c / $q; $cogs = $avg * $n; Write-Host $([math]::Round($cogs, 0)) } }
