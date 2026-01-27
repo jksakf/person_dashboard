@@ -30,7 +30,7 @@ Get-Config | Out-Null
 # 3. 靜態載入 Script (使用 Dot-Sourcing 確保在同一個 Scope)
 # -------------------------------------------------------------
 Write-Log "正在載入腳本..." -Level Info
-$modules = @("BankAsset.ps1", "StockHolding.ps1", "RealizedPnL.ps1", "Transaction.ps1", "CostCalculator.ps1", "DataMerger.ps1", "PriceFetcher.ps1")
+$modules = @("BankAsset.ps1", "StockHolding.ps1", "RealizedPnL.ps1", "Transaction.ps1", "CostCalculator.ps1", "DataMerger.ps1", "PriceFetcher.ps1", "PriceUpdater.ps1")
 foreach ($mod in $modules) {
     $fullPath = Join-Path $Script:RootPath "modules/$mod"
     Write-Host "Loading $mod ..." -NoNewline
@@ -57,8 +57,9 @@ while ($true) {
         "2" = @{ Description = "股票庫存輸入"; Action = { Invoke-StockHoldingFlow } }
         "3" = @{ Description = "已實現損益輸入"; Action = { Invoke-RealizedPnLFlow } }
         "4" = @{ Description = "錄入交易明細 (New Transaction)"; Action = { Invoke-TransactionFlow } }
-        "5" = @{ Description = "合併年度資料 (Merge CSV)"; Action = { Invoke-DataMergerFlow } }
-        "6" = @{ Description = "🗑️ 刪除交易紀錄"; Action = { Invoke-DeleteTransactionFlow } }
+        "5" = @{ Description = "更新股價 (同步最新市值)"; Action = { Invoke-UpdatePriceFlow } }
+        "6" = @{ Description = "合併年度資料 (Merge CSV)"; Action = { Invoke-DataMergerFlow } }
+        "7" = @{ Description = "🗑️ 刪除交易紀錄"; Action = { Invoke-DeleteTransactionFlow } }
     }
     
     Show-Menu -Title "個人資產資料管理系統 (PowerShell)" -Options $menuOptions
