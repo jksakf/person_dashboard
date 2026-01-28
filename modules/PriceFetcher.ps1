@@ -18,7 +18,12 @@ function Get-RealTimePrice {
         # Safe Match for "港股" (港=6E2F)
         elseif ($MarketType -match "HK" -or $MarketType -match [char]0x6E2F) {
             # Use Stooq as primary for HK (More reliable without key)
-            return Get-StooqPrice -Code $Code
+            $price = Get-StooqPrice -Code $Code
+            if (-not $price) {
+                Write-Log "Stooq HK failed for $Code, fallback to Yahoo" -Level Warning
+                $price = Get-YahooPrice -Code $Code -MarketType $MarketType
+            }
+            return $price
         }
         # 美股 (美=7F8E)
         elseif ($MarketType -match "US" -or $MarketType -match [char]0x7F8E) {
@@ -55,15 +60,17 @@ function Get-StooqPrice {
         $content = Invoke-WebRequest -Uri $url -Headers @{ "User-Agent" = "Mozilla/5.0" } -UseBasicParsing -ErrorAction Stop
         $csvText = $content.Content
         
-        # Manually parse to avoid Import-Csv overhead on single string
         $lines = $csvText -split "`n"
         if ($lines.Count -ge 2) {
             $dataLine = $lines[1]
             $cols = $dataLine -split ","
             if ($cols.Count -ge 7) {
                 $close = $cols[6]
-                if ($close -ne "N/D") {
-                    return [double]$close
+                if ($close -and $close -ne "N/D" -and $close -ne "ND") {
+                    $val = 0.0
+                    if ([double]::TryParse($close, [ref]$val)) {
+                        return $val
+                    }
                 }
             }
         }
@@ -87,15 +94,17 @@ function Get-StooqUSPrice {
         $content = Invoke-WebRequest -Uri $url -Headers @{ "User-Agent" = "Mozilla/5.0" } -UseBasicParsing -ErrorAction Stop
         $csvText = $content.Content
         
-        # Manually parse CSV
         $lines = $csvText -split "`n"
         if ($lines.Count -ge 2) {
             $dataLine = $lines[1]
             $cols = $dataLine -split ","
             if ($cols.Count -ge 7) {
                 $close = $cols[6]
-                if ($close -ne "N/D") {
-                    return [double]$close
+                if ($close -and $close -ne "N/D" -and $close -ne "ND") {
+                    $val = 0.0
+                    if ([double]::TryParse($close, [ref]$val)) {
+                        return $val
+                    }
                 }
             }
         }
@@ -110,8 +119,7 @@ function Get-StooqUSPrice {
 function Get-TwsePrice {
     param ([string]$Code)
 
-    # TWSE MIS API (基本市況報導網站)
-    # 嘗試同時查詢上市(tse)與上櫃(otc)
+    # TWSE MIS API 
     $ts = [int][double]::Parse((Get-Date -UFormat %s)) * 1000
     $url = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_${Code}.tw|otc_${Code}.tw&json=1&delay=0&_=$ts"
 
@@ -119,21 +127,13 @@ function Get-TwsePrice {
         $response = Invoke-RestMethod -Uri $url -Method Get -ErrorAction Stop
         
         if ($response.msgArray -and $response.msgArray.Count -gt 0) {
-            # 找到有效資料 (z=成交價, y=昨收)
-            # 優先找有成交價的
             $data = $response.msgArray | Where-Object { $_.z -ne "-" } | Select-Object -First 1
-            
-            # 如果盤中沒有成交價(z)，改用昨收(y)或最佳買賣價? 
-            # 通常至少會有 y (昨收)
-            # 但我們要的是 "Current Price"
-            
             if (-not $data) {
-                # 可能是剛開盤或沒成交，回退到第一筆資料
                 $data = $response.msgArray[0]
             }
 
-            $price = $data.z # 成交價
-            if ($price -eq "-") { $price = $data.y } # 若無成交，用昨收
+            $price = $data.z 
+            if ($price -eq "-") { $price = $data.y } 
 
             if ($price -and $price -ne "-") {
                 return [double]$price
@@ -160,7 +160,11 @@ function Get-YahooPrice {
         $cleanCode = [int]$Code
         $symbol = "${cleanCode}.HK"
     }
-    # 美股通常直接用代號 (AAPL, NVDA)
+    
+    # 支援 FX 模式
+    if ($MarketType -eq "FX") {
+        $symbol = $Code # 直接使用傳入的代號 (e.g. HKDTWD=X)
+    }
 
     $url = "https://query1.finance.yahoo.com/v8/finance/chart/$symbol?interval=1d&range=1d"
     $headers = @{ "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
@@ -216,10 +220,8 @@ function Get-ExchangeRate {
     if ($FromCurrency -eq $ToCurrency) { return 1.0 }
 
     # Stooq FX symbol: HKDTWD, USDTWD
-    # Try direct pair first
     $symbol = "${FromCurrency}${ToCurrency}"
     
-    # Use Stooq logic
     $url = "https://stooq.com/q/l/?s=$symbol&f=sd2t2ohlc&h&e=csv"
     
     try {
@@ -232,8 +234,11 @@ function Get-ExchangeRate {
             $cols = $dataLine -split ","
             if ($cols.Count -ge 7) {
                 $close = $cols[6]
-                if ($close -ne "N/D") {
-                    return [double]$close
+                if ($close -and $close -ne "N/D" -and $close -ne "ND") {
+                    $val = 0.0
+                    if ([double]::TryParse($close, [ref]$val)) {
+                        return $val
+                    }
                 }
             }
         }
@@ -242,7 +247,15 @@ function Get-ExchangeRate {
         Write-Log "Stooq FX Error ($symbol): $_" -Level Debug
     }
     
+    # Fallback to Yahoo (Format: HKDTWD=X)
+    Generate-YahooFX -From $FromCurrency -To $ToCurrency
+    
     return $null
 }
 
-
+function Generate-YahooFX {
+    param ($From, $To)
+    $symbol = "${From}${To}=X"
+    Write-Log "Fallback FX to Yahoo: $symbol" -Level Debug
+    return Get-YahooPrice -Code $symbol -MarketType "FX"
+}

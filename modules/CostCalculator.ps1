@@ -40,87 +40,139 @@ function Get-PortfolioStatus {
 
     $transactions = Get-TransactionData -TargetDate $TargetDate
     $portfolio = @{} 
-    # Structure: Code -> { Name, Quantity, TotalCost, RealizedPnL_Accumulated, DetailHistory }
 
     foreach ($t in $transactions) {
         $code = $t.'代號'
-        
         # [Fix] 防止 CSV 有空行或代號為空導致 Crash
-        if ([string]::IsNullOrWhiteSpace($code)) {
-            continue
-        }
+        if ([string]::IsNullOrWhiteSpace($code)) { continue }
 
         $name = $t.'名稱'
         $type = $t.'類別'
-        if (-not [string]::IsNullOrWhiteSpace($type)) {
-            $type = $type.Trim()
-        }
+        if (-not [string]::IsNullOrWhiteSpace($type)) { $type = $type.Trim() }
         
-        # (New) 讀取幣別
+        # (New) 讀取幣別與匯率
         $currency = if ($t.'幣別') { $t.'幣別' } else { "TWD" }
+        $rateStr = $t.'匯率'
+        $rate = 1.0
+        if (-not [string]::IsNullOrWhiteSpace($rateStr) -and $rateStr -match "^\d+(\.\d+)?$") {
+            $rate = [double]$rateStr
+        }
 
         $qty = [int]$t.'股數'
-        $amount = [double]$t.'總金額' # Buy: Cost (inc fee), Sell: Net Proceeds (dec fee/tax)
+        $amount = [double]$t.'總金額' # 紀錄上的金額 (可能是 TWD 或 外幣)
         
+        # 換算 原幣金額 與 台幣金額
+        # Case 1: 紀錄為 TWD -> Orig = Amt / Rate, TWD = Amt
+        # Case 2: 紀錄為 外幣 -> Orig = Amt, TWD = Amt * Rate
+        $amountOrig = 0.0
+        $amountTWD = 0.0
+        
+        if ($currency -eq "TWD") {
+            $amountTWD = $amount
+            $amountOrig = if ($rate -gt 0) { $amount / $rate } else { $amount }
+        }
+        else {
+            $amountOrig = $amount
+            $amountTWD = $amount * $rate
+        }
+
         if (-not $portfolio.ContainsKey($code)) {
             $portfolio[$code] = [PSCustomObject]@{
-                Code        = $code
-                Name        = $name
-                Currency    = $currency
-                Quantity    = 0
-                TotalCost   = 0.0
-                RealizedPnL = 0.0
-                AvgCost     = 0.0
+                Code          = $code
+                Name          = $name
+                Currency      = $currency
+                Quantity      = 0
+                TotalCostOrig = 0.0     # 剩餘庫存總成本 (原幣, FIFO)
+                TotalCostTWD  = 0.0     # 剩餘庫存總成本 (台幣, FIFO)
+                AvgCostOrig   = 0.0
+                AvgCostTWD    = 0.0
+                RealizedPnL   = 0.0
+                Batches       = [System.Collections.Generic.Queue[PSCustomObject]]::new()
             }
         }
 
         $p = $portfolio[$code]
 
-        # Regex Safe Match:
-        # Buy = 買 (8CB7) or Buy
-        # Sell = 賣 (8CE3) or Sell
+        # Regex Safe Match
         $isBuy = $type -match "Buy" -or $type -match [char]0x8CB7
         $isSell = $type -match "Sell" -or $type -match [char]0x8CE3
 
         if ($isBuy) {
-            # 買入：增加庫存，增加總成本
+            # 買入：建立新批次
+            $batch = [PSCustomObject]@{
+                Quantity      = $qty
+                TotalCostOrig = $amountOrig
+                TotalCostTWD  = $amountTWD
+                UnitCostOrig  = if ($qty -gt 0) { $amountOrig / $qty } else { 0 }
+                UnitCostTWD   = if ($qty -gt 0) { $amountTWD / $qty } else { 0 }
+            }
+            $p.Batches.Enqueue($batch)
+            
             $p.Quantity += $qty
-            $p.TotalCost += $amount
+            $p.TotalCostOrig += $amountOrig
+            $p.TotalCostTWD += $amountTWD
         }
         elseif ($isSell) {
-            # 賣出：減少庫存，計算損益
-            if ($p.Quantity -eq 0) {
-                Write-Warning "異常交易：嘗試賣出無庫存股票 $code ($qty)"
-                continue
-            }
+            if ($p.Quantity -eq 0) { continue }
 
-            # 計算當下平均成本 (每股)
-            $avgCost = $p.TotalCost / $p.Quantity
+            $remainingToSell = $qty
+            $cogsOrig = 0.0
+            $cogsTWD = 0.0
+
+            while ($remainingToSell -gt 0 -and $p.Batches.Count -gt 0) {
+                $batch = $p.Batches.Peek()
+
+                if ($batch.Quantity -le $remainingToSell) {
+                    # 此批耗盡
+                    $cogsOrig += $batch.TotalCostOrig
+                    $cogsTWD += $batch.TotalCostTWD
+                    $remainingToSell -= $batch.Quantity
+                    $p.Batches.Dequeue() | Out-Null
+                }
+                else {
+                    # 此批部分賣出
+                    $partialOrig = $batch.UnitCostOrig * $remainingToSell
+                    $partialTWD = $batch.UnitCostTWD * $remainingToSell
+                    
+                    $cogsOrig += $partialOrig
+                    $cogsTWD += $partialTWD
+                    
+                    $batch.Quantity -= $remainingToSell
+                    $batch.TotalCostOrig -= $partialOrig
+                    $batch.TotalCostTWD -= $partialTWD
+                    $remainingToSell = 0
+                }
+            }
             
-            # 銷售成本 (Cost of Goods Sold)
-            $cogs = $avgCost * $qty
+            # 賣出時通常用 "成交金額" 減去 "成本" 算損益
+            # 這裡 $amount 是成交金額 (依照 Currency)
+            # 為了簡化 PnL 累積，我們先只算 "紀錄幣別" 的損益，詳盡報表由 Get-PnLReport 負責
+            # 但這裡的 RealizedPnL 只是個概數
+            $pnl = 0
+            if ($currency -eq "TWD") { $pnl = $amount - $cogsTWD }
+            else { $pnl = $amount - $cogsOrig }
             
-            # 計算已實現損益 = 淨交割金額 - 銷售成本
-            $pnl = $amount - $cogs
-            
-            # 更新庫存狀態
             $p.Quantity -= $qty
-            $p.TotalCost -= $cogs
+            $p.TotalCostOrig -= $cogsOrig
+            $p.TotalCostTWD -= $cogsTWD
             $p.RealizedPnL += $pnl
 
-            # 處理浮點數誤差 (若庫存歸零，成本應歸零)
             if ($p.Quantity -le 0) {
                 $p.Quantity = 0
-                $p.TotalCost = 0
+                $p.TotalCostOrig = 0
+                $p.TotalCostTWD = 0
+                $p.Batches.Clear()
             }
         }
         
-        # 更新平均成本顯示 (避免除以零)
+        # 更新平均成本
         if ($p.Quantity -gt 0) {
-            $p.AvgCost = $p.TotalCost / $p.Quantity
+            $p.AvgCostOrig = $p.TotalCostOrig / $p.Quantity
+            $p.AvgCostTWD = $p.TotalCostTWD / $p.Quantity
         }
         else {
-            $p.AvgCost = 0
+            $p.AvgCostOrig = 0
+            $p.AvgCostTWD = 0
         }
     }
 
@@ -136,22 +188,19 @@ function Get-PnLReport {
     $queryDate = if ($TargetYear -eq "ALL") { "99991231" } else { "${TargetYear}1231" }
     $transactions = Get-TransactionData -TargetDate $queryDate
     
-    # 僅篩選當年度的賣出，但需重跑所有歷史以計算正確成本
     $pnlRecords = [System.Collections.ArrayList]::new()
-    
-    # 臨時庫存狀態 (用於 Replay) - 改用 FIFO
     $portfolio = @{} 
 
     foreach ($t in $transactions) {
         $code = $t.'代號'
         $name = $t.'名稱'
         $type = $t.'類別'
+        $currency = if ($t.'幣別') { $t.'幣別' } else { "TWD" } # Get Currency
         $qty = [int]$t.'股數'
         $amount = [double]$t.'總金額'
         $date = $t.'日期'
         
         if (-not $portfolio.ContainsKey($code)) {
-            # 使用佇列（Queue）追蹤每批買入
             $portfolio[$code] = [PSCustomObject]@{
                 Batches = [System.Collections.Generic.Queue[PSCustomObject]]::new()
                 Name    = $name
@@ -159,37 +208,33 @@ function Get-PnLReport {
         }
         $p = $portfolio[$code]
 
-        if ($type -eq "買進") {
-            # 記錄這批買入
+        if ($type -match "買") {
+            # Simple "買" check covers Buy/買進/買入
             $batch = [PSCustomObject]@{
                 Quantity  = $qty
                 TotalCost = $amount
+                UnitCost  = if ($qty -gt 0) { $amount / $qty } else { 0 }
             }
             $p.Batches.Enqueue($batch)
         }
-        elseif ($type -eq "賣出") {
+        elseif ($type -match "賣") {
             if ($p.Batches.Count -eq 0) { continue }
             
-            # FIFO: 從最早買入的批次開始賣出
             $remainingToSell = $qty
             $totalCogs = 0.0
             
             while ($remainingToSell -gt 0 -and $p.Batches.Count -gt 0) {
-                $batch = $p.Batches.Peek()  # 查看最早的批次
+                $batch = $p.Batches.Peek()
                 
                 if ($batch.Quantity -le $remainingToSell) {
-                    # 這批全部賣掉
                     $totalCogs += $batch.TotalCost
                     $remainingToSell -= $batch.Quantity
-                    $p.Batches.Dequeue() | Out-Null  # 移除這批
+                    $p.Batches.Dequeue() | Out-Null
                 }
                 else {
-                    # 這批部分賣掉
-                    $avgCost = $batch.TotalCost / $batch.Quantity
-                    $partialCost = $avgCost * $remainingToSell
+                    $partialCost = $batch.UnitCost * $remainingToSell
                     $totalCogs += $partialCost
                     
-                    # 更新剩餘
                     $batch.Quantity -= $remainingToSell
                     $batch.TotalCost -= $partialCost
                     $remainingToSell = 0
@@ -199,7 +244,6 @@ function Get-PnLReport {
             $cogs = $totalCogs
             $pnl = $amount - $cogs
             
-            # 若此交易發生在目標年份，則記錄
             if ($TargetYear -eq "ALL" -or $date.StartsWith($TargetYear)) {
                 
                 $roi = 0
@@ -207,15 +251,15 @@ function Get-PnLReport {
                 
                 $record = [ordered]@{
                     "日期"    = [datetime]::Parse($date).ToString("yyyy/MM/dd")
-                    "市場"    = "台股"
+                    "市場"    = if ($currency -eq "TWD") { "台股" } else { "外幣" }
                     "股票代號"  = $code
                     "股票名稱"  = $p.Name
+                    "幣別"    = $currency
                     "賣出股數"  = $qty
-                    "總成本"   = [math]::Round($cogs, 0)
-                    "賣出價"   = [math]::Round($amount, 0)
-                    "已實現損益" = [math]::Round($pnl, 0)
+                    "總成本"   = [math]::Round($cogs, 2)    # 外幣可能會有小數
+                    "賣出價"   = [math]::Round($amount, 2)
+                    "已實現損益" = [math]::Round($pnl, 2)
                     "報酬率%"  = "$([math]::Round($roi, 2))%"
-                    "匯率"    = "1.0"
                 }
                 $pnlRecords.Add([PSCustomObject]$record) | Out-Null
             }

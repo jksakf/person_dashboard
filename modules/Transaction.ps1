@@ -58,8 +58,8 @@ function Invoke-TransactionFlow {
 
     # 3. 檢查或建立 CSV Header
     if (-not (Test-Path $csvPath) -or (Get-Item $csvPath).Length -eq 0) {
-        # 定義欄位: 日期, 代號, 名稱, 類別, 價格, 股數, 手續費, 交易稅, 總金額, 備註
-        "日期,代號,名稱,類別,價格,股數,手續費,交易稅,總金額,備註" | Out-File -FilePath $csvPath -Encoding Unicode
+        # 定義欄位: 日期, 代號, 名稱, 類別, 幣別, 匯率, 價格, 股數, 手續費, 交易稅, 總金額, 備註
+        "日期,代號,名稱,類別,幣別,匯率,價格,股數,手續費,交易稅,總金額,備註" | Out-File -FilePath $csvPath -Encoding Unicode
     }
 
     # 4. 載入股票清單 (用於選取)
@@ -108,53 +108,64 @@ function Invoke-TransactionFlow {
         }
 
         # --- (New) 幣別與匯率處理 ---
+        # 預設幣別邏輯
         $currency = "TWD"
         $stockType = $selectedStock.Type
-        
         if ($stockType -match "HK" -or $stockType -match "港") { $currency = "HKD" }
         elseif ($stockType -match "US" -or $stockType -match "美") { $currency = "USD" }
         
+        # 讓使用者確認幣別 (防止自動判斷錯誤)
+        $currencyInput = Get-CleanInput -Prompt "請確認幣別" -DefaultValue $currency
+        $currency = $currencyInput
+
         $exchRate = 1.0
         if ($currency -ne "TWD") {
-            # 提示輸入匯率 (未來可整合 PriceFetcher 自動抓用)
+            # 提示輸入匯率
             $exchRate = Get-CleanInput -Prompt "請輸入匯率 ($currency -> TWD)" -DefaultValue "4.0" -IsNumber $true
         }
 
         # --- E. 試算費用 ---
-        # 1. 小計
+        # 1. 小計 (原幣)
         $subTotal = $price * $qty
         
-        # 2. 手續費 (買賣都要) -> 無條件捨去 (通常) 但建議保留整數
-        # [Fix] 港美股手續費結構不同，這裡暫時維持通用，但至少費率可調
+        # 2. 手續費 (原幣)
         $calFee = [Math]::Floor($subTotal * $feeRate)
         if ($calFee -lt $minFee) { $calFee = $minFee }
-
-        # 3. 交易稅 (僅賣出) -> 四捨五入
+        
+        # 3. 交易稅 (原幣, 僅賣出)
         $calTax = 0
         if ($type -eq "賣出") {
             $calTax = [Math]::Floor($subTotal * $taxRate)
         }
 
         Write-Host "`n📊 費用試算 ($currency):" -ForegroundColor Yellow
-        Write-Host "   成交金額: $subTotal"
-        Write-Host "   預估手續費: $calFee (費率: $($feeRate*100)%, 低消: $minFee)"
+        Write-Host "   成交金額: $subTotal ($currency)"
+        Write-Host "   預估手續費: $calFee"
         if ($type -eq "賣出") {
-            Write-Host "   預估交易稅: $calTax (稅率: $($taxRate*100)%)"
+            Write-Host "   預估交易稅: $calTax"
         }
+        
+        # 預估台幣交割金額
+        $estTotalOrig = 0
+        if ($type -eq "買進") { $estTotalOrig = $subTotal + $calFee }
+        else { $estTotalOrig = $subTotal - $calFee - $calTax }
+        
+        $estTotalTWD = [math]::Round($estTotalOrig * $exchRate, 0)
+
         if ($currency -ne "TWD") {
-            Write-Host "   預估總額(台幣): $([math]::Round(($subTotal * $exchRate),0)) (匯率: $exchRate)"
+            Write-Host "   ------------------------"
+            Write-Host "   預估總額(原幣): $estTotalOrig $currency"
+            Write-Host "   預估總額(台幣): $estTotalTWD TWD (匯率: $exchRate)" -ForegroundColor Cyan
         }
 
         # --- F. 確認或修正費用 ---
-        $finalFee = Get-CleanInput -Prompt "確認手續費 (直接按 Enter 使用試算值 $calFee)" -DefaultValue $calFee -IsNumber $true
+        $finalFee = Get-CleanInput -Prompt "確認手續費 ($currency)" -DefaultValue $calFee -IsNumber $true
         $finalTax = 0
         if ($type -eq "賣出") {
-            $finalTax = Get-CleanInput -Prompt "確認交易稅 (直接按 Enter 使用試算值 $calTax)" -DefaultValue $calTax -IsNumber $true
+            $finalTax = Get-CleanInput -Prompt "確認交易稅 ($currency)" -DefaultValue $calTax -IsNumber $true
         }
 
-        # --- G. 計算總交割金額 ---
-        # 買入 = 價金 + 費
-        # 賣出 = 價金 - 費 - 稅
+        # --- G. 計算總交割金額 (原幣) ---
         $totalAmount = 0
         if ($type -eq "買進") {
             $totalAmount = $subTotal + $finalFee
@@ -162,8 +173,17 @@ function Invoke-TransactionFlow {
         else {
             $totalAmount = $subTotal - $finalFee - $finalTax
         }
+        
+        # 確保小數點處理 (原幣保留 2 位)
+        $finalTotal = [math]::Round($totalAmount, 2)
+        
+        # 計算最終台幣 (供參考/確認)
+        $finalTotalTWD = [math]::Round($finalTotal * $exchRate, 0)
 
-        Write-Host "`n💰 最終交割金額: $totalAmount ($currency)" -ForegroundColor Green
+        Write-Host "`n💰 最終紀錄金額: $finalTotal ($currency)" -ForegroundColor Green
+        if ($currency -ne "TWD") {
+            Write-Host "   (約合台幣: $finalTotalTWD, 將紀錄匯率以供換算)" -ForegroundColor Gray
+        }
         
         # --- H. 確認寫入 ---
         $note = Read-Host "備註 (選填)"
@@ -172,10 +192,7 @@ function Invoke-TransactionFlow {
         if ($confirm -match "^[Yy]") {
             # 格式化日期: yyyyMMdd -> yyyy/MM/dd
             $dateFormatted = [datetime]::ParseExact($date, "yyyyMMdd", $null).ToString("yyyy/MM/dd")
-            # 總金額捨棄小數點
-            $finalTotal = [math]::Floor($totalAmount)
 
-            # [Fix] 使用 PSCustomObject 確保 CSV 格式正確 (自動處理換行與引號)
             $recordObj = [PSCustomObject]@{
                 '日期'  = $dateFormatted
                 '代號'  = $selectedStock.Code
@@ -183,11 +200,11 @@ function Invoke-TransactionFlow {
                 '類別'  = $type
                 '幣別'  = $currency
                 '匯率'  = $exchRate
-                '價格'  = $price
+                '價格'  = $price       # 原幣價格
                 '股數'  = $qty
-                '手續費' = $finalFee
-                '交易稅' = $finalTax
-                '總金額' = $finalTotal
+                '手續費' = $finalFee    # 原幣手續費
+                '交易稅' = $finalTax    # 原幣交易稅
+                '總金額' = $finalTotal  # 原幣總金額
                 '備註'  = $note
             }
             
