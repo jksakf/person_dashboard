@@ -107,6 +107,41 @@ function Invoke-TransactionFlow {
             continue
         }
 
+        # --- (New) 賣出庫存檢查 ---
+        if ($type -eq "賣出") {
+            Write-Host "🔍 正在檢查庫存..." -ForegroundColor DarkGray
+            try {
+                # 取得目前庫存 (截至今日)
+                $inventory = Get-PortfolioStatus -TargetDate $date
+                $holding = $inventory[$selectedStock.Code]
+                
+                $currentQty = 0
+                if ($holding) { $currentQty = $holding.Quantity }
+
+                if ($qty -gt $currentQty) {
+                    Write-Host "`n⛔ 庫存不足警告！" -ForegroundColor Red
+                    Write-Host "   代號: $($selectedStock.Code)"
+                    Write-Host "   目前持有: $currentQty 股"
+                    Write-Host "   欲賣出  : $qty 股"
+                    Write-Host "   (短缺    : $($qty - $currentQty) 股)"
+                    
+                    Write-Host "`n您沒有足夠的股票可以賣出。" -ForegroundColor Yellow
+                    $retry = Read-Host "是否重新輸入股數? (Y/N) [輸入 N 將取消此筆交易]"
+                    if ($retry -match "^[Nn]") { continue }
+                    
+                    # 若要重試，簡單跳過本次 loop (或讓底下邏輯更複雜)
+                    # 這裡簡單選擇 continue 回到 loop 開頭重來
+                    continue
+                }
+                else {
+                    Write-Host "   目前庫存: $currentQty 股 (充足)" -ForegroundColor DarkGray
+                }
+            }
+            catch {
+                Write-Host "⚠️  庫存檢查失敗，將跳過檢查 ($_) " -ForegroundColor Yellow
+            }
+        }
+
         # --- (New) 幣別與匯率處理 ---
         # 預設幣別邏輯
         $currency = "TWD"

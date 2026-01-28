@@ -66,7 +66,9 @@ function Invoke-RealizedPnLFlow {
                     Write-Host "  (約合 TWD: $([math]::Round($estTWD, 0)))" -ForegroundColor DarkGray
                 }
             }
-            catch {}
+            catch {
+                Write-Log "匯率換算參考失敗 ($currency -> TWD): $_" -Level Debug
+            }
         }
         Write-Host "-----------------------------"
     }

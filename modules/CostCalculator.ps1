@@ -93,9 +93,9 @@ function Get-PortfolioStatus {
 
         $p = $portfolio[$code]
 
-        # Regex Safe Match
-        $isBuy = $type -match "Buy" -or $type -match [char]0x8CB7
-        $isSell = $type -match "Sell" -or $type -match [char]0x8CE3
+        # Regex Safe Match (使用直觀中文)
+        $isBuy = $type -match "Buy" -or $type -match "買"
+        $isSell = $type -match "Sell" -or $type -match "賣"
 
         if ($isBuy) {
             # 買入：建立新批次
@@ -142,6 +142,10 @@ function Get-PortfolioStatus {
                     $batch.TotalCostTWD -= $partialTWD
                     $remainingToSell = 0
                 }
+            }
+            
+            if ($remainingToSell -gt 0) {
+                Write-Warning "庫存異常: $code 超賣 $remainingToSell 股 (持有量將變為負數)"
             }
             
             # 賣出時通常用 "成交金額" 減去 "成本" 算損益
@@ -208,58 +212,107 @@ function Get-PnLReport {
         }
         $p = $portfolio[$code]
 
+        # [Fix] 統一匯率處理邏輯 (參考 Get-PortfolioStatus)
+        $rateStr = $t.'匯率'
+        $rate = 1.0
+        if (-not [string]::IsNullOrWhiteSpace($rateStr) -and $rateStr -match "^\d+(\.\d+)?$") {
+            $rate = [double]$rateStr
+        }
+
+        # 換算
+        $amountOrig = 0.0
+        $amountTWD = 0.0
+        if ($currency -eq "TWD") {
+            $amountTWD = $amount
+            $amountOrig = if ($rate -gt 0) { $amount / $rate } else { $amount }
+        }
+        else {
+            $amountOrig = $amount
+            $amountTWD = $amount * $rate
+        }
+
         if ($type -match "買") {
-            # Simple "買" check covers Buy/買進/買入
             $batch = [PSCustomObject]@{
-                Quantity  = $qty
-                TotalCost = $amount
-                UnitCost  = if ($qty -gt 0) { $amount / $qty } else { 0 }
+                Quantity      = $qty
+                TotalCostOrig = $amountOrig
+                TotalCostTWD  = $amountTWD
+                UnitCostOrig  = if ($qty -gt 0) { $amountOrig / $qty } else { 0 }
+                UnitCostTWD   = if ($qty -gt 0) { $amountTWD / $qty } else { 0 }
             }
             $p.Batches.Enqueue($batch)
         }
         elseif ($type -match "賣") {
-            if ($p.Batches.Count -eq 0) { continue }
+            if ($p.Batches.Count -eq 0) {
+                Write-Warning "賣出異常: $code ($date) 無庫存可賣 (Qty: $qty)"
+                continue 
+            }
             
             $remainingToSell = $qty
-            $totalCogs = 0.0
+            $totalCogsOrig = 0.0
+            $totalCogsTWD = 0.0
             
             while ($remainingToSell -gt 0 -and $p.Batches.Count -gt 0) {
                 $batch = $p.Batches.Peek()
                 
                 if ($batch.Quantity -le $remainingToSell) {
-                    $totalCogs += $batch.TotalCost
+                    $totalCogsOrig += $batch.TotalCostOrig
+                    $totalCogsTWD += $batch.TotalCostTWD
                     $remainingToSell -= $batch.Quantity
                     $p.Batches.Dequeue() | Out-Null
                 }
                 else {
-                    $partialCost = $batch.UnitCost * $remainingToSell
-                    $totalCogs += $partialCost
+                    $partialOrig = $batch.UnitCostOrig * $remainingToSell
+                    $partialTWD = $batch.UnitCostTWD * $remainingToSell
+                    
+                    $totalCogsOrig += $partialOrig
+                    $totalCogsTWD += $partialTWD
                     
                     $batch.Quantity -= $remainingToSell
-                    $batch.TotalCost -= $partialCost
+                    $batch.TotalCostOrig -= $partialOrig
+                    $batch.TotalCostTWD -= $partialTWD
                     $remainingToSell = 0
                 }
             }
             
-            $cogs = $totalCogs
-            $pnl = $amount - $cogs
+            if ($remainingToSell -gt 0) {
+                Write-Warning "庫存不足: $code ($date) 超賣 $remainingToSell 股"
+            }
+            
+            $cogsOrig = $totalCogsOrig
+            $cogsTWD = $totalCogsTWD
+            
+            $pnlOrig = 0
+            $pnlTWD = 0
+            
+            if ($currency -eq "TWD") {
+                $pnlOrig = $amount - $cogsOrig
+                $pnlTWD = $amount - $cogsTWD # TWD case: same
+            }
+            else {
+                $pnlOrig = $amountOrig - $cogsOrig
+                $pnlTWD = $amountTWD - $cogsTWD
+            }
             
             if ($TargetYear -eq "ALL" -or $date.StartsWith($TargetYear)) {
                 
                 $roi = 0
-                if ($cogs -ne 0) { $roi = ($pnl / $cogs) * 100 }
+                if ($cogsTWD -ne 0) { $roi = ($pnlTWD / $cogsTWD) * 100 }
                 
                 $record = [ordered]@{
-                    "日期"    = [datetime]::Parse($date).ToString("yyyy/MM/dd")
-                    "市場"    = if ($currency -eq "TWD") { "台股" } else { "外幣" }
-                    "股票代號"  = $code
-                    "股票名稱"  = $p.Name
-                    "幣別"    = $currency
-                    "賣出股數"  = $qty
-                    "總成本"   = [math]::Round($cogs, 2)    # 外幣可能會有小數
-                    "賣出價"   = [math]::Round($amount, 2)
-                    "已實現損益" = [math]::Round($pnl, 2)
-                    "報酬率%"  = "$([math]::Round($roi, 2))%"
+                    "日期"        = [datetime]::Parse($date).ToString("yyyy/MM/dd")
+                    "市場"        = if ($currency -eq "TWD") { "台股" } else { "外幣" }
+                    "股票代號"      = $code
+                    "股票名稱"      = $p.Name
+                    "幣別"        = $currency
+                    "賣出股數"      = $qty
+                    "匯率"        = $rate
+                    "總成本(原幣)"   = [math]::Round($cogsOrig, 2)
+                    "賣出價(原幣)"   = [math]::Round($amountOrig, 2)
+                    "已實現損益(原幣)" = [math]::Round($pnlOrig, 2)
+                    "總成本(台幣)"   = [math]::Round($cogsTWD, 0)
+                    "賣出價(台幣)"   = [math]::Round($amountTWD, 0)
+                    "已實現損益(台幣)" = [math]::Round($pnlTWD, 0)
+                    "報酬率%"      = "$([math]::Round($roi, 2))%"
                 }
                 $pnlRecords.Add([PSCustomObject]$record) | Out-Null
             }
