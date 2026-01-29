@@ -11,6 +11,10 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <!-- 引入 ChartDataLabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <!-- 引入 Chart.js Treemap Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
+    <!-- 引入 CountUp.js (數字捲動特效) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.0.7/countUp.min.js"></script>
     <!-- 引入 Google Fonts: Noto Sans TC (內文) + Roboto Mono (數字) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -187,6 +191,35 @@
             border-color: var(--accent-color);
         }
 
+        /* Primary Action Buttons */
+        .action-btn {
+            border: none;
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            filter: brightness(1.1);
+        }
+
+        .action-btn.primary {
+            background: var(--accent-color);
+            color: #1e293b;
+        }
+
+        .action-btn.danger {
+            background: rgba(248, 113, 113, 0.2);
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+        }
+
         /* Navigation Tabs */
         .tabs {
             display: flex;
@@ -350,12 +383,10 @@
                 <p style="color: var(--text-secondary); margin-bottom: 20px;">或點擊下方按鈕選擇檔案</p>
 
                 <div style="display: flex; gap: 15px; justify-content: center;">
-                    <button onclick="document.getElementById('batchUpload').click()"
-                        style="background: var(--accent-color); color: #1e293b; border: none; padding: 12px 30px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
+                    <button onclick="document.getElementById('batchUpload').click()" class="action-btn primary">
                         🚀 選擇檔案
                     </button>
-                    <button onclick="clearAllData()"
-                        style="background: rgba(248, 113, 113, 0.2); color: var(--danger-color); border: 1px solid var(--danger-color); padding: 12px 30px; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+                    <button onclick="clearAllData()" class="action-btn danger">
                         🗑️ 清除
                     </button>
                 </div>
@@ -511,8 +542,18 @@
             <!-- 圖表卡片: 持股分佈 -->
             <div class="dashboard-card">
                 <h2 class="section-title">持股分佈 (依市值)</h2>
-                <div style="height: 400px; position: relative;">
+                <div class="chart-container" style="height: 400px; position: relative;">
+                    <!-- Chart Switcher -->
+                    <div style="position: absolute; top: 0; right: 0; z-index: 10; display: flex; gap: 5px;">
+                        <button onclick="switchStockChart('pie')" id="btn-chart-pie" class="action-btn primary"
+                            style="padding: 5px 12px; font-size: 0.85rem;">圓餅圖</button>
+                        <button onclick="switchStockChart('bar')" id="btn-chart-bar" class="action-btn"
+                            style="padding: 5px 12px; font-size: 0.85rem; background: rgba(255,255,255,0.1); color: var(--text-color);">長條圖</button>
+                        <button onclick="switchStockChart('bubble')" id="btn-chart-bubble" class="action-btn"
+                            style="padding: 5px 12px; font-size: 0.85rem; background: rgba(255,255,255,0.1); color: var(--text-color);">氣泡圖</button>
+                    </div>
                     <canvas id="stockPieChart"></canvas>
+                    <!-- <canvas id="stockTreemap" style="display: none;"></canvas> -->
                 </div>
             </div>
 
@@ -615,6 +656,29 @@
                 } else {
                     console.log("✅ 所有元件載入成功");
                     initDragAndDrop(); // Initialize Drag & Drop
+                }
+            }
+
+            // Animation Helper using CountUp.js
+            function animateMoney(elementId, amount, prefix = '$') {
+                const options = {
+                    decimalPlaces: 0,
+                    duration: 2.0,
+                    prefix: prefix,
+                    separator: ',',
+                };
+                // Check if CountUp is loaded
+                if (typeof CountUp === 'undefined') {
+                    // Fallback
+                    document.getElementById(elementId).textContent = prefix + amount.toLocaleString();
+                    return;
+                }
+                const anim = new CountUp(elementId, amount, options);
+                if (!anim.error) {
+                    anim.start();
+                } else {
+                    console.error(anim.error);
+                    document.getElementById(elementId).textContent = prefix + amount.toLocaleString();
                 }
             }
 
@@ -746,6 +810,45 @@
             };
 
             let charts = {}; // 儲存圖表實例
+            let currentStockChartType = 'pie'; // 'pie' or 'treemap'
+
+            // Switch Stock Chart Type
+            // Switch Stock Chart Type
+            function switchStockChart(type) {
+                currentStockChartType = type;
+
+                // Update Buttons
+                const btnPie = document.getElementById('btn-chart-pie');
+                const btnBar = document.getElementById('btn-chart-bar');
+                const btnBubble = document.getElementById('btn-chart-bubble');
+
+                // Reset all styles
+                [btnPie, btnBar, btnBubble].forEach(btn => {
+                    btn.classList.remove('primary');
+                    btn.style.background = 'rgba(255,255,255,0.1)';
+                });
+
+                // Hide all canvases (we use the same canvas for Pie/Bar/Bubble basically, or separate?)
+                // Actually cleaner to use one canvas and destroy char instance.
+                // But previously we had separate partial Canvas. Let's assume we use 'stockPieChart' for everything
+                // except Treemap which had its own container maybe?
+                // Let's stick to using 'stockPieChart' canvas for ALL standard charts (Pie, Bar, Bubble)
+                // and hide Treemap if it exists (though we commented it out in HTML).
+
+                if (type === 'pie') {
+                    btnPie.classList.add('primary');
+                    btnPie.style.background = 'var(--accent-color)';
+                } else if (type === 'bar') {
+                    btnBar.classList.add('primary');
+                    btnBar.style.background = 'var(--accent-color)';
+                } else if (type === 'bubble') {
+                    btnBubble.classList.add('primary');
+                    btnBubble.style.background = 'var(--accent-color)';
+                }
+
+                // Re-render
+                renderStockHoldings();
+            }
 
             // 若 ChartDataLabels 插件有載入，則註冊它
             if (typeof ChartDataLabels !== 'undefined') {
@@ -1006,7 +1109,7 @@
                 const totalAmount = currentData.reduce((sum, item) => sum + parseMoney(item['金額']), 0);
 
                 // 6. 更新 DOM
-                document.getElementById('totalBankAssets').textContent = `$${totalAmount.toLocaleString()}`;
+                animateMoney('totalBankAssets', totalAmount);
                 document.getElementById('assetsDate').textContent = `資料日期: ${selectedDate}`;
 
                 // 7. 準備圖表資料
@@ -1239,6 +1342,10 @@
                                     }
                                 }
                             }
+                        },
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeOutQuart'
                         }
                     }
                 });
@@ -1291,23 +1398,47 @@
                 const totalUnrealizedPnL = currentData.reduce((sum, item) => sum + parseMoney(item['未實現損益']), 0);
 
                 // 6. 更新 DOM
-                document.getElementById('totalMarketValue').textContent = `$${totalMarketValue.toLocaleString()}`;
+                // document.getElementById('totalMarketValue').textContent = `$${totalMarketValue.toLocaleString()}`;
+                animateMoney('totalMarketValue', totalMarketValue);
 
                 const pnlEl = document.getElementById('totalUnrealizedPnL');
-                pnlEl.textContent = `$${totalUnrealizedPnL.toLocaleString()}`;
+                // pnlEl.textContent = `$${totalUnrealizedPnL.toLocaleString()}`;
+                animateMoney('totalUnrealizedPnL', totalUnrealizedPnL, totalUnrealizedPnL >= 0 ? '$' : '-$');
                 pnlEl.style.color = totalUnrealizedPnL >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
                 document.getElementById('stockDate').textContent = `資料日期: ${selectedDate}`;
 
-                // 7. 準備圓餅圖資料
-                const labels = currentData.map(item => item['股票名稱'] || item['股票代號']);
-                const marketValues = currentData.map(item => parseMoney(item['市值(台幣)'] || item['市值']));
+                // 7. 準備圖表資料
+                const stockLabels = currentData.map(item => item['股票名稱'] || item['股票代號']);
+                const stockValues = currentData.map(item => parseMoney(item['市值(台幣)'] || item['市值']));
 
-                // 8. 繪製圓餅圖
+                // 8. 渲染圖表 (Pie, Bar, or Bubble)
+                if (currentStockChartType === 'pie') {
+                    renderStockPieChart(stockLabels, stockValues, totalMarketValue);
+                } else if (currentStockChartType === 'bar') {
+                    renderStockBarChart(currentData);
+                } else if (currentStockChartType === 'bubble') {
+                    renderStockBubbleChart(currentData);
+                } else {
+                    // Fallback or Treemap if needed later
+                    // renderStockTreemap(currentData);
+                }
+
+                // 9. 繪製明細表格
+                renderStockTable(currentData);
+            }
+
+            // 渲染持股圓餅圖
+            function renderStockPieChart(labels, marketValues, totalMarketValue) {
                 const ctx = document.getElementById('stockPieChart').getContext('2d');
 
                 if (charts['stockPie']) {
                     charts['stockPie'].destroy();
+                }
+                // Ensure treemap chart is destroyed if it exists
+                if (charts['stockTreemap']) {
+                    charts['stockTreemap'].destroy();
+                    charts['stockTreemap'] = null;
                 }
 
                 charts['stockPie'] = new Chart(ctx, {
@@ -1318,7 +1449,9 @@
                             data: marketValues,
                             backgroundColor: [
                                 '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                                '#FF9F40', '#FF5733', '#33FF57', '#3357FF', '#F333FF'
+                                '#FF9F40', '#FF5733', '#33FF57', '#3357FF', '#F333FF',
+                                '#8A2BE2', '#A52A2A', '#DEB887', '#5F9EA0', '#7FFF00',
+                                '#D2691E', '#FF7F50', '#6495ED', '#DC143C', '#00FFFF'
                             ],
                             borderWidth: 1
                         }]
@@ -1333,7 +1466,8 @@
                                     font: {
                                         size: 14
                                     },
-                                    padding: 15
+                                    padding: 15,
+                                    color: '#fff' // Fixed: Bright text for dark mode
                                 }
                             },
                             tooltip: {
@@ -1363,21 +1497,277 @@
                                     weight: 'bold',
                                     size: 14
                                 },
-                                formatter: function (value, context) {
-                                    const label = context.chart.data.labels[context.dataIndex];
-                                    const percentage = ((value / totalMarketValue) * 100).toFixed(1) + '%';
-                                    // 如果比例太小 (<3%) 就不顯示
-                                    if ((value / totalMarketValue) < 0.03) return null;
-                                    return label + '\n' + percentage;
+                                formatter: (value, ctx) => {
+                                    let sum = 0;
+                                    let dataArr = ctx.chart.data.datasets[0].data;
+                                    dataArr.map(data => {
+                                        sum += data;
+                                    });
+                                    let percentage = (value * 100 / sum).toFixed(1) + "%";
+                                    return percentage;
                                 },
                                 textAlign: 'center'
                             }
+                        },
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeOutQuart'
                         }
                     }
                 });
+            }
 
-                // 9. 繪製明細表格
-                renderStockTable(currentData);
+            // 渲染持股橫向排長條圖 (Horizontal Bar)
+            function renderStockBarChart(data) {
+                const ctx = document.getElementById('stockPieChart').getContext('2d');
+                if (charts['stockPie']) charts['stockPie'].destroy();
+
+                // Sort by Market Value Desc
+                const sortedData = [...data].sort((a, b) => {
+                    const valA = parseMoney(a['市值(台幣)'] || a['市值']);
+                    const valB = parseMoney(b['市值(台幣)'] || b['市值']);
+                    return valB - valA;
+                });
+
+                const labels = sortedData.map(item => item['股票名稱'] || item['股票代號']);
+                const values = sortedData.map(item => parseMoney(item['市值(台幣)'] || item['市值']));
+                const colors = sortedData.map(item => {
+                    const pnl = parseMoney(item['未實現損益']);
+                    return pnl >= 0 ? 'rgba(72, 187, 120, 0.8)' : 'rgba(245, 101, 101, 0.8)'; // Green/Red
+                });
+
+                charts['stockPie'] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '市值',
+                            data: values,
+                            backgroundColor: colors,
+                            borderRadius: 6,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', // Horizontal
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const val = context.raw;
+                                        return `市值: $${val.toLocaleString()}`;
+                                    }
+                                }
+                            },
+                            datalabels: {
+                                display: true,
+                                color: 'white',
+                                anchor: 'end',
+                                align: 'end',
+                                formatter: (val) => `$${(val / 10000).toFixed(1)}萬`,
+                                font: { weight: 'bold' }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: 'var(--text-secondary)' }
+                            },
+                            y: {
+                                grid: { display: false },
+                                ticks: {
+                                    color: 'white',
+                                    font: { size: 14, weight: 'bold', family: "'Noto Sans TC'" }
+                                }
+                            }
+                        },
+                        animation: { duration: 1500, easing: 'easeOutQuart' }
+                    }
+                });
+            }
+
+            // 渲染持股績效氣泡圖 (Performance Bubble)
+            function renderStockBubbleChart(data) {
+                const ctx = document.getElementById('stockPieChart').getContext('2d');
+                if (charts['stockPie']) charts['stockPie'].destroy();
+
+                const bubbleData = data.map(item => {
+                    const mktVal = parseMoney(item['市值(台幣)'] || item['市值']);
+                    const cost = parseMoney(item['總成本']);
+                    const pnl = parseMoney(item['未實現損益']);
+                    const roi = parseMoney(item['報酬率%']);
+
+                    // Simple scaling: sqrt(cost) to avoid huge bubbles, then factor down
+                    const r = Math.sqrt(cost) / 15;
+
+                    return {
+                        x: roi,
+                        y: mktVal,
+                        r: Math.max(r, 5), // Min size 5
+                        name: item['股票名稱'] || item['股票代號'],
+                        rawCost: cost,
+                        rawPnl: pnl
+                    };
+                });
+
+                charts['stockPie'] = new Chart(ctx, {
+                    type: 'bubble',
+                    data: {
+                        datasets: [{
+                            label: '持股',
+                            data: bubbleData,
+                            backgroundColor: (ctx) => {
+                                const val = ctx.raw?.x;
+                                return val >= 0 ? 'rgba(72, 187, 120, 0.7)' : 'rgba(245, 101, 101, 0.7)';
+                            },
+                            borderColor: (ctx) => {
+                                const val = ctx.raw?.x;
+                                return val >= 0 ? '#48bb78' : '#f56565';
+                            },
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const d = context.raw;
+                                        return [
+                                            d.name,
+                                            `報酬率: ${d.x.toFixed(2)}%`,
+                                            `市值: $${d.y.toLocaleString()}`,
+                                            `成本: $${d.rawCost.toLocaleString()}`,
+                                            `損益: $${d.rawPnl.toLocaleString()}`
+                                        ];
+                                    }
+                                }
+                            },
+                            datalabels: {
+                                display: true,
+                                color: 'white',
+                                align: 'top',
+                                formatter: (val, ctx) => ctx.chart.data.datasets[0].data[ctx.dataIndex].name,
+                                font: { weight: 'bold', size: 12 }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: '報酬率 (%)', color: '#cbd5e1' },
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: 'white' }
+                            },
+                            y: {
+                                title: { display: true, text: '市值 ($)', color: '#cbd5e1' },
+                                grid: { color: 'rgba(255,255,255,0.1)' },
+                                ticks: { color: 'white' },
+                                beginAtZero: true
+                            }
+                        },
+                        animation: { duration: 1500, easing: 'easeOutQuart' }
+                    }
+                });
+            }
+
+            // Duplicate function removed
+
+            // 渲染持股矩形樹狀圖 (Treemap)
+            function renderStockTreemap_OLD(data) {
+                const ctx = document.getElementById('stockTreemap').getContext('2d');
+
+                // Destroy existing charts
+                if (charts['stockTreemap']) {
+                    charts['stockTreemap'].destroy();
+                }
+
+                // Prepare Data
+                // Chart.js Treemap expects a 'tree' array
+                const treemapData = data.map(item => {
+                    const marketValue = parseMoney(item['市值(台幣)'] || item['市值']);
+                    const pnl = parseMoney(item['未實現損益']);
+                    const pnlColor = pnl >= 0 ? '#48bb78' : '#f56565'; // Green/Red
+                    return {
+                        value: marketValue,
+                        name: item['股票名稱'] || item['股票代號'],
+                        code: item['股票代號'],
+                        pnl: pnl,
+                        pnlFormatted: pnl >= 0 ? `+${pnl.toLocaleString()}` : `${pnl.toLocaleString()}`,
+                        color: pnlColor
+                    };
+                }).sort((a, b) => b.value - a.value); // Sort by Size
+
+                charts['stockTreemap'] = new Chart(ctx, {
+                    type: 'treemap',
+                    data: {
+                        datasets: [{
+                            tree: treemapData,
+                            key: 'value',
+                            groups: ['name'], // Only one level for now
+                            spacing: 1,
+                            borderWidth: 1,
+                            borderColor: '#fff',
+                            backgroundColor: (ctx) => {
+                                if (ctx.type !== 'data') return 'transparent';
+                                // Fix: Access _data to get custom properties
+                                return ctx.raw._data ? ctx.raw._data.color : '#ccc';
+                            },
+                            labels: {
+                                display: true,
+                                align: 'center',
+                                position: 'center',
+                                color: 'white',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold',
+                                    family: "'Noto Sans TC', sans-serif"
+                                },
+                                formatter: (ctx) => {
+                                    if (ctx.type !== 'data') return;
+                                    const item = ctx.raw;
+                                    const total = treemapData.reduce((acc, cur) => acc + cur.value, 0);
+                                    const percent = ((item._data.value / total) * 100).toFixed(1) + '%';
+
+                                    // Multi-line label
+                                    return [
+                                        item._data.name,
+                                        percent
+                                    ];
+                                }
+                            }
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: (items) => {
+                                        return items[0].raw._data.name + ' (' + items[0].raw._data.code + ')';
+                                    },
+                                    label: (item) => {
+                                        const d = item.raw._data;
+                                        return [
+                                            `市值: $${d.value.toLocaleString()}`,
+                                            `未實現損益: ${d.pnlFormatted}`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1500,
+                            easing: 'easeOutQuart'
+                        }
+                    }
+                });
             }
 
             // 渲染持股明細表格
@@ -1440,6 +1830,100 @@
                 `;
 
                 container.innerHTML = tableHTML;
+            }
+
+            // NEW Robust Treemap Implementation
+            function renderStockTreemap(data) {
+                const ctx = document.getElementById('stockTreemap').getContext('2d');
+
+                // Destroy existing charts
+                if (charts['stockTreemap']) {
+                    charts['stockTreemap'].destroy();
+                }
+
+                // Prepare Data
+                const treemapData = data.map(item => {
+                    const marketValue = parseMoney(item['市值(台幣)'] || item['市值']);
+                    const pnl = parseMoney(item['未實現損益']);
+                    const pnlColor = pnl >= 0 ? '#48bb78' : '#f56565'; // Green for profit, Red for loss
+                    return {
+                        value: marketValue,
+                        name: item['股票名稱'] || item['股票代號'],
+                        code: item['股票代號'],
+                        pnl: pnl,
+                        pnlFormatted: pnl >= 0 ? `+${pnl.toLocaleString()}` : `${pnl.toLocaleString()}`,
+                        color: pnlColor
+                    };
+                }).sort((a, b) => b.value - a.value);
+
+                // Create maps for safe lookup
+                const colorMap = treemapData.reduce((acc, item) => {
+                    acc[item.name] = item.color;
+                    return acc;
+                }, {});
+
+                const pnlMap = treemapData.reduce((acc, item) => {
+                    acc[item.name] = item.pnlFormatted;
+                    return acc;
+                }, {});
+
+                charts['stockTreemap'] = new Chart(ctx, {
+                    type: 'treemap',
+                    data: {
+                        datasets: [{
+                            tree: treemapData,
+                            key: 'value',
+                            groups: ['name'],
+                            spacing: 1,
+                            borderWidth: 1,
+                            borderColor: '#333',
+                            backgroundColor: (ctx) => {
+                                if (ctx.type !== 'data' || !ctx.raw) return 'transparent';
+                                const name = ctx.raw.l; // Label/Name from group
+                                return colorMap[name] || '#666';
+                            },
+                            labels: {
+                                display: true,
+                                align: 'center',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold',
+                                    family: "'Noto Sans TC', sans-serif"
+                                },
+                                color: 'white',
+                                formatter: (ctx) => {
+                                    if (ctx.type !== 'data' || !ctx.raw) return;
+                                    const value = ctx.raw.v;
+                                    const name = ctx.raw.l;
+                                    const total = treemapData.reduce((acc, cur) => acc + cur.value, 0);
+                                    const percent = ((value / total) * 100).toFixed(1) + '%';
+                                    const pnlText = pnlMap[name] || '';
+                                    return [name, pnlText + ' (' + percent + ')'];
+                                }
+                            }
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: (items) => items[0].raw.l,
+                                    label: (item) => {
+                                        const val = item.raw.v;
+                                        return `市值: $${val.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 1500,
+                            easing: 'easeOutQuart'
+                        }
+                    }
+                });
             }
 
             // 渲染交易歷史流水帳
@@ -1548,11 +2032,15 @@
 
                 // 4. 更新 DOM
                 const pnlEl = document.getElementById('totalRealizedPnL');
-                pnlEl.textContent = `$${totalRealizedPnL.toLocaleString()}`;
+                // pnlEl.textContent = `$${totalRealizedPnL.toLocaleString()}`;
+                animateMoney('totalRealizedPnL', Math.abs(totalRealizedPnL), totalRealizedPnL >= 0 ? '$' : '-$');
                 pnlEl.style.color = totalRealizedPnL >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
-                document.getElementById('totalSalePrice').textContent = `$${totalSalePrice.toLocaleString()}`;
-                document.getElementById('totalCost').textContent = `$${totalCost.toLocaleString()}`;
+                // document.getElementById('totalSalePrice').textContent = `$${totalSalePrice.toLocaleString()}`;
+                animateMoney('totalSalePrice', totalSalePrice);
+
+                // document.getElementById('totalCost').textContent = `$${totalCost.toLocaleString()}`;
+                animateMoney('totalCost', totalCost);
                 document.getElementById('pnlDate').textContent = `資料期間: ${dateRange} (共 ${data.length} 筆交易)`;
                 // ... 繼續後面的圖表與表格渲染
 
@@ -1641,6 +2129,10 @@
                                 },
                                 textAlign: 'center'
                             }
+                        },
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeOutQuart'
                         }
                     }
                 });
