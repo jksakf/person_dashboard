@@ -11,35 +11,20 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <!-- 引入 ChartDataLabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-    <!-- 引入 Google Fonts: Noto Sans TC (內文) + Roboto Mono (數字) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- 引入 Google Fonts -->
     <link
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Ns+Jansong:wght@400;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
         rel="stylesheet">
 
     <style>
         :root {
-            /* 深色背景漸層：營造深邃感 */
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-
-            /* 毛玻璃卡片背景 */
-            --glass-bg: rgba(30, 41, 59, 0.7);
-            --glass-border: rgba(255, 255, 255, 0.1);
-
-            /* 文字系統 */
-            --text-main: #f8fafc;
-            /* 主要文字 (亮白) */
-            --text-secondary: #94a3b8;
-            /* 次要文字 (灰藍) - 對應舊版變數名 */
-
-            /* 數據色彩 */
-            --accent-color: #38bdf8;
-            /* 強調色 (天空藍) - 對應舊版變數名 */
-            --success-color: #34d399;
-            /* 獲利 (薄荷綠) - 對應舊版變數名 */
-            --danger-color: #f87171;
-            /* 虧損 (柔和紅) - 對應舊版變數名 */
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --text-main: #2d3748;
+            --text-secondary: #262842;
+            --accent-color: #667eea;
+            --success-color: #48bb78;
+            --danger-color: #f56565;
         }
 
         * {
@@ -50,27 +35,11 @@
         }
 
         body {
-            background: var(--bg-gradient);
+            background: var(--primary-gradient);
             min-height: 100vh;
             color: var(--text-main);
             padding: 20px;
             padding-bottom: 50px;
-            font-family: 'Noto Sans TC', sans-serif;
-            /* 預設使用 Noto Sans TC */
-        }
-
-        /* 數字強制使用 Roboto Mono */
-        .number-font,
-        .amount,
-        #totalBankAssets,
-        #totalMarketValue,
-        #totalUnrealizedPnL,
-        #totalRealizedPnL,
-        #totalSalePrice,
-        #totalCost,
-        td:nth-child(n+3) {
-            font-family: 'Roboto Mono', monospace;
-            font-weight: 500;
         }
 
         .container {
@@ -81,7 +50,7 @@
         /* Header Section */
         header {
             text-align: center;
-            color: var(--text-main);
+            color: white;
             margin-bottom: 30px;
             padding-top: 20px;
         }
@@ -89,64 +58,28 @@
         header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            font-family: 'Noto Sans TC', sans-serif;
-            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         header p {
-            color: var(--text-secondary);
+            opacity: 0.9;
             font-weight: 300;
-            letter-spacing: 1px;
-        }
-
-        /* Glassmorphism Common Styles */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            border-radius: 24px;
         }
 
         /* File Upload Section */
         .upload-section {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 30px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-        }
-
-        /* New Drag & Drop Zone Styles */
-        .drop-zone {
-            border: 2px dashed rgba(255, 255, 255, 0.3);
+            background: var(--card-bg);
             border-radius: 16px;
-            padding: 40px;
-            text-align: center;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.05);
-            cursor: pointer;
-            position: relative;
-        }
-
-        .drop-zone:hover,
-        .drop-zone.drag-over {
-            border-color: var(--accent-color);
-            background: rgba(56, 189, 248, 0.1);
-            /* Sky blue tint */
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
         }
 
         .upload-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin-top: 20px;
         }
 
         .upload-item {
@@ -164,27 +97,17 @@
             font-size: 1.1rem;
         }
 
-        /* Hide default file input */
         .upload-item input[type="file"] {
-            display: none;
-        }
-
-        /* Custom File Button */
-        .custom-file-btn {
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            color: var(--text-secondary);
+            padding: 10px;
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
             cursor: pointer;
-            text-align: center;
             transition: all 0.3s ease;
         }
 
-        .custom-file-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
+        .upload-item input[type="file"]:hover {
             border-color: var(--accent-color);
+            background-color: #f7fafc;
         }
 
         /* Navigation Tabs */
@@ -192,39 +115,38 @@
             display: flex;
             justify-content: center;
             margin-bottom: 25px;
-            background: rgba(0, 0, 0, 0.2);
-            /* Darker panel for tabs */
+            background: rgba(255, 255, 255, 0.2);
             padding: 5px;
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
             width: fit-content;
             margin-left: auto;
             margin-right: auto;
-            border: 1px solid var(--glass-border);
         }
 
         .tab-btn {
             padding: 12px 30px;
             border: none;
             background: transparent;
-            color: var(--text-secondary);
+            color: white;
             font-size: 1rem;
             font-weight: 500;
             cursor: pointer;
-            border-radius: 12px;
+            border-radius: 8px;
             transition: all 0.3s ease;
+            opacity: 0.7;
         }
 
         .tab-btn:hover {
-            color: white;
-            background: rgba(255, 255, 255, 0.05);
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .tab-btn.active {
-            background: rgba(255, 255, 255, 0.1);
+            background: white;
             color: var(--accent-color);
+            opacity: 1;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--glass-border);
         }
 
         /* Content Sections */
@@ -250,23 +172,19 @@
         }
 
         .dashboard-card {
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            padding: 30px;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            margin-bottom: 25px;
-            color: var(--text-main);
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
         }
 
         .section-title {
             font-size: 1.5rem;
             color: var(--text-main);
             margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+            border-bottom: 2px solid #edf2f7;
         }
 
         /* Placeholder Styles */
@@ -300,36 +218,6 @@
                 background: white;
             }
         }
-
-        /* Table Styles for Dark Mode */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            color: var(--text-main);
-            /* Ensure text is light */
-        }
-
-        th,
-        td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        th {
-            background-color: rgba(0, 0, 0, 0.2);
-            color: var(--accent-color);
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            letter-spacing: 0.5px;
-        }
-
-        tr:hover {
-            background-color: rgba(255, 255, 255, 0.05);
-            /* Subtle hover effect */
-        }
     </style>
 </head>
 
@@ -343,62 +231,63 @@
 
         <!-- 檔案上傳區 -->
         <div class="upload-section">
-            <!-- 拖放區域 -->
-            <div id="dropZone" class="drop-zone">
-                <div style="font-size: 3rem; margin-bottom: 10px;">📂</div>
-                <h3 style="font-size: 1.5rem; margin-bottom: 10px;">拖曳所有 CSV 檔案至此</h3>
-                <p style="color: var(--text-secondary); margin-bottom: 20px;">或點擊下方按鈕選擇檔案</p>
-
-                <div style="display: flex; gap: 15px; justify-content: center;">
-                    <button onclick="document.getElementById('batchUpload').click()"
-                        style="background: var(--accent-color); color: #1e293b; border: none; padding: 12px 30px; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: transform 0.2s;">
-                        🚀 選擇檔案
-                    </button>
-                    <button onclick="clearAllData()"
-                        style="background: rgba(248, 113, 113, 0.2); color: var(--danger-color); border: 1px solid var(--danger-color); padding: 12px 30px; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-                        🗑️ 清除
-                    </button>
-                </div>
-
+            <!-- 一鍵載入按鈕 -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button onclick="document.getElementById('batchUpload').click()" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                               color: white; 
+                               border: none; 
+                               padding: 12px 30px; 
+                               border-radius: 8px; 
+                               font-size: 1.1rem; 
+                               font-weight: 600; 
+                               cursor: pointer; 
+                               box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+                               transition: transform 0.2s, box-shadow 0.2s;
+                               margin-right: 15px;">
+                    🚀 一鍵載入全部 CSV
+                </button>
+                <button onclick="clearAllData()" style="background: #656af5; 
+                               color: white; 
+                               border: none; 
+                               padding: 12px 30px; 
+                               border-radius: 8px; 
+                               font-size: 1.1rem; 
+                               font-weight: 600; 
+                               cursor: pointer; 
+                               box-shadow: 0 4px 15px rgba(245, 101, 101, 0.4);
+                               transition: transform 0.2s, box-shadow 0.2s;">
+                    🗑️ 清除資料
+                </button>
                 <input type="file" id="batchUpload" accept=".csv" multiple style="display: none;">
-                <div id="batchUploadStatus" style="margin-top: 15px; color: var(--text-main); font-weight: 500;"></div>
+                <div id="batchUploadStatus" style="margin-top: 10px; color: var(--text-secondary); font-size: 0.9rem;">
+                </div>
             </div>
 
-            <!-- 個別上傳 Grid -->
+            <div style="text-align: center; margin: 20px 0; color: var(--text-secondary); font-size: 0.9rem;">
+                或個別上傳 ↓
+            </div>
+
+            <!-- 個別上傳 -->
             <div class="upload-grid">
                 <div class="upload-item">
-                    <label>🏦 銀行資產 <span id="bankStatus"
+                    <label>🏦 匯入銀行資產 CSV <span id="bankStatus"
                             style="font-size:0.8em; color:var(--success-color)"></span></label>
-                    <label class="custom-file-btn">
-                        選擇檔案
-                        <input type="file" id="bankFile" accept=".csv" onchange="handleFileUpload(event, 'bankAssets')">
-                    </label>
+                    <input type="file" id="bankFile" accept=".csv" onchange="handleFileUpload(event, 'bankAssets')">
                 </div>
                 <div class="upload-item">
-                    <label>📈 股票庫存 <span id="stockStatus"
+                    <label>📈 匯入股票庫存 CSV <span id="stockStatus"
                             style="font-size:0.8em; color:var(--success-color)"></span></label>
-                    <label class="custom-file-btn">
-                        選擇檔案
-                        <input type="file" id="stockFile" accept=".csv"
-                            onchange="handleFileUpload(event, 'stockHoldings')">
-                    </label>
+                    <input type="file" id="stockFile" accept=".csv" onchange="handleFileUpload(event, 'stockHoldings')">
                 </div>
                 <div class="upload-item">
-                    <label>💸 已實現損益 <span id="pnlStatus"
+                    <label>💸 匯入已實現損益 CSV <span id="pnlStatus"
                             style="font-size:0.8em; color:var(--success-color)"></span></label>
-                    <label class="custom-file-btn">
-                        選擇檔案
-                        <input type="file" id="pnlFile" accept=".csv" onchange="handleFileUpload(event, 'realizedPnL')">
-                    </label>
+                    <input type="file" id="pnlFile" accept=".csv" onchange="handleFileUpload(event, 'realizedPnL')">
                 </div>
                 <div class="upload-item">
-                    <label>📝 交易明細 <span id="transStatus"
+                    <label>📝 匯入交易明細 CSV <span id="transStatus"
                             style="font-size:0.8em; color:var(--success-color)"></span></label>
-                    <label class="custom-file-btn">
-                        選擇檔案
-                        <input type="file" id="transFile" accept=".csv"
-                            onchange="handleFileUpload(event, 'transactions')">
-                    </label>
+                    <input type="file" id="transFile" accept=".csv" onchange="handleFileUpload(event, 'transactions')">
                 </div>
             </div>
         </div>
@@ -614,61 +503,12 @@
                     alert(`❌ 嚴重錯誤：缺少必要元件！\n\n${missing.join('\n')}\n\n可能是網路問題導致無法載入 CDN，請檢查網路連線或稍後再試。`);
                 } else {
                     console.log("✅ 所有元件載入成功");
-                    initDragAndDrop(); // Initialize Drag & Drop
                 }
             }
 
-            // Init Drag & Drop Listeners
-            function initDragAndDrop() {
-                const dropZone = document.getElementById('dropZone');
-
-                // Prevent default drag behaviors
-                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, preventDefaults, false);
-                    document.body.addEventListener(eventName, preventDefaults, false);
-                });
-
-                // Highlight drop zone when item is dragged over it
-                ['dragenter', 'dragover'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, highlight, false);
-                });
-
-                ['dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, unhighlight, false);
-                });
-
-                // Handle dropped files
-                dropZone.addEventListener('drop', handleDrop, false);
-            }
-
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-
-            function highlight(e) {
-                document.getElementById('dropZone').classList.add('drag-over');
-            }
-
-            function unhighlight(e) {
-                document.getElementById('dropZone').classList.remove('drag-over');
-            }
-
-            function handleDrop(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                handleBatchFiles(files);
-            }
-
-            // Refactored Batch Upload to support both Input and Drop
+            // 批次上傳處理
             function handleBatchUpload(event) {
-                const files = event.target.files;
-                handleBatchFiles(files);
-            }
-
-            // Core Batch Processing Logic
-            function handleBatchFiles(fileList) {
-                const files = Array.from(fileList);
+                const files = Array.from(event.target.files);
                 if (files.length === 0) return;
 
                 const statusEl = document.getElementById('batchUploadStatus');
@@ -760,7 +600,7 @@
             const SCHEMA = {
                 bankAssets: ["日期", "帳戶名稱", "金額"],
                 stockHoldings: ["日期", "市場", "股票代號", "股票名稱", "持有股數", "總成本"], // 放寬檢查，支援新舊版欄位
-                realizedPnL: ["日期", "市場", "股票代號", "股票名稱", "賣出股數", "總成本(原幣)", "賣出價(原幣)", "已實現損益(原幣)", "總成本(台幣)", "賣出價(台幣)", "已實現損益(台幣)", "報酬率%"],
+                realizedPnL: ["日期", "市場", "股票代號", "股票名稱", "賣出股數", "總成本", "賣出價", "已實現損益", "報酬率%"],
                 transactions: ["日期", "代號", "名稱", "類別", "價格", "股數", "總金額"]
             };
 
@@ -1114,14 +954,15 @@
                 const sortedData = [...data].sort((a, b) => parseMoney(b['金額']) - parseMoney(a['金額']));
 
                 sortedData.forEach((item, index) => {
+                    const bgColor = index % 2 === 0 ? '#f9f9f9' : '#fff';
                     const amount = parseMoney(item['金額']);
                     const percentage = totalAmount > 0 ? ((amount / totalAmount) * 100).toFixed(1) + '%' : '0%';
 
                     tableHTML += `
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1); font-weight: bold; color: var(--text-color);">${item['帳戶名稱'] || '-'}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1); font-family: monospace; font-size: 1.1rem;">$${amount.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${percentage}</td>
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: var(--text-color);">${item['帳戶名稱'] || '-'}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-family: monospace; font-size: 1.1rem;">$${amount.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${percentage}</td>
                         </tr>
                     `;
                 });
@@ -1404,6 +1245,7 @@
                 `;
 
                 data.forEach((item, index) => {
+                    const bgColor = index % 2 === 0 ? '#f9f9f9' : '#fff';
                     const qty = parseMoney(item['持有股數']);
                     const cost = parseMoney(item['總成本']);
 
@@ -1415,19 +1257,19 @@
                     const returnColor = returnRate >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
                     tableHTML += `
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['市場'] || '-'}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['股票代號'] || '-'}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['股票名稱'] || '-'}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${qty.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${avgCost.toFixed(1)}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${cost.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${item['幣別'] || 'TWD'}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${parseMoney(item['市值(台幣)'] || item['市值']).toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1); color: ${pnlColor}; font-weight: 600;">
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['市場'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['股票代號'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['股票名稱'] || '-'}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${qty.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${avgCost.toFixed(1)}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${cost.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${item['幣別'] || 'TWD'}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['市值(台幣)'] || item['市值']).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor}; font-weight: 600;">
                                 ${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}
                             </td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1); color: ${returnColor}; font-weight: 600;">
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${returnColor}; font-weight: 600;">
                                 ${returnRate >= 0 ? '+' : ''}${returnRate.toFixed(2)}%
                             </td>
                         </tr>
@@ -1480,13 +1322,14 @@
                 `;
 
                 sortedData.forEach((item, index) => {
+                    const bgColor = index % 2 === 0 ? '#f9f9f9' : '#fff';
                     const type = item['類別'];
                     // Buy usually Red or Green? 
                     // In Taiwan: Buy = Red (Bull), Sell = Green (Bear). 
                     // But "Type" label color: 
                     // Buy -> Expense (Blue/Black?), Sell -> Income.
                     // Let's use simple badges.
-                    const typeColor = type === '買進' ? '#d32f2f' : (type === '賣出' ? '#388e3c' : '#aaa');
+                    const typeColor = type === '買進' ? '#d32f2f' : (type === '賣出' ? '#388e3c' : '#555');
                     const typeLabel = `<span style="color: ${typeColor}; font-weight: bold;">${type}</span>`;
 
                     const price = parseMoney(item['價格']);
@@ -1494,15 +1337,15 @@
                     const total = parseMoney(item['總金額']);
 
                     tableHTML += `
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['日期'] || '-'}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['代號'] || '-'}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['名稱'] || '-'}</td>
-                            <td style="padding: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.1);">${typeLabel}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${price.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${qty.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1); font-weight:bold;">$${total.toLocaleString()}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1); color: var(--text-secondary);">${item['備註'] || ''}</td>
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['日期'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['代號'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['名稱'] || '-'}</td>
+                            <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">${typeLabel}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${price.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${qty.toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-weight:bold;">$${total.toLocaleString()}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd; color: #666;">${item['備註'] || ''}</td>
                         </tr>
                     `;
                 });
@@ -1541,10 +1384,10 @@
 
                 const dateRange = startDate === endDate ? startDate : `${startDate} ~ ${endDate}`;
 
-                // 3. 計算總已實現損益、總賣出價、總成本 (使用台幣加總)
-                const totalRealizedPnL = data.reduce((sum, item) => sum + parseMoney(item['已實現損益(台幣)'] || item['已實現損益']), 0);
-                const totalSalePrice = data.reduce((sum, item) => sum + parseMoney(item['賣出價(台幣)'] || item['賣出價']), 0);
-                const totalCost = data.reduce((sum, item) => sum + parseMoney(item['總成本(台幣)'] || item['總成本']), 0);
+                // 3. 計算總已實現損益、總賣出價、總成本
+                const totalRealizedPnL = data.reduce((sum, item) => sum + parseMoney(item['已實現損益']), 0);
+                const totalSalePrice = data.reduce((sum, item) => sum + parseMoney(item['賣出價']), 0);
+                const totalCost = data.reduce((sum, item) => sum + parseMoney(item['總成本']), 0);
 
                 // 4. 更新 DOM
                 const pnlEl = document.getElementById('totalRealizedPnL');
@@ -1560,13 +1403,13 @@
                 let profitAmount = 0;
                 let lossAmount = 0;
 
-                data.forEach(item => {
-                    const pnl = parseMoney(item['已實現損益(台幣)'] || item['已實現損益']); // Use TWD
+                data.forEach(item => { // 注意這裡改成用 data
+                    const pnl = parseMoney(item['已實現損益']);
 
                     if (pnl > 0) {
                         profitAmount += pnl;
                     } else if (pnl < 0) {
-                        lossAmount += Math.abs(pnl);
+                        lossAmount += Math.abs(pnl); // 取絕對值
                     }
                 });
 
@@ -1715,48 +1558,25 @@
                 `;
 
                 data.forEach((item, index) => {
-                    // Update: Support new column keys (台幣)
-                    // If TWD columns exist, use them. Fallback to old keys only if TWD missing (backwards compat)
-                    const isForeign = item['幣別'] && item['幣別'] !== 'TWD';
-
-                    const qty = parseMoney(item['賣出股數']);
-                    // TWD Values
-                    const costTWD = parseMoney(item['總成本(台幣)'] || item['總成本']);
-                    const saleTWD = parseMoney(item['賣出價(台幣)'] || item['賣出價']);
-                    const pnlTWD = parseMoney(item['已實現損益(台幣)'] || item['已實現損益']);
-
-                    // Original Values (for display if foreign)
-                    const costOrig = parseMoney(item['總成本(原幣)']);
-                    const saleOrig = parseMoney(item['賣出價(原幣)']);
-                    const pnlOrig = parseMoney(item['已實現損益(原幣)']);
-
-                    const pnlColor = pnlTWD >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+                    const bgColor = index % 2 === 0 ? '#f9f9f9' : '#fff';
+                    const pnl = parseMoney(item['已實現損益']);
+                    const pnlColor = pnl >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
                     const returnRate = parseMoney(item['報酬率%']);
                     const returnColor = returnRate >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
-                    // Helper to show original currency if foreign
-                    const showOrig = (val, symbol = '$') => isForeign ? `<div style="font-size:0.8em; opacity:0.7; margin-top:2px;">(${symbol}${val.toLocaleString()})</div>` : '';
-
                     tableHTML += `
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['日期'] || '-'}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['市場'] || '-'}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['股票代號'] || '-'}</td>
-                            <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['股票名稱'] || '-'}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${qty.toLocaleString()}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">
-                                $${costTWD.toLocaleString()}
-                                ${showOrig(costOrig)}
+                        <tr style="background: ${bgColor};">
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['日期'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['市場'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['股票代號'] || '-'}</td>
+                            <td style="padding: 10px; border: 1px solid #ddd;">${item['股票名稱'] || '-'}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">${parseMoney(item['賣出股數']).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['總成本']).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd;">$${parseMoney(item['賣出價']).toLocaleString()}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${pnlColor}; font-weight: 600;">
+                                ${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}
                             </td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">
-                                $${saleTWD.toLocaleString()}
-                                ${showOrig(saleOrig)}
-                            </td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1); color: ${pnlColor}; font-weight: 600;">
-                                ${pnlTWD >= 0 ? '+' : ''}$${pnlTWD.toLocaleString()}
-                                ${isForeign ? `<div style="font-size:0.8em; opacity:0.7; margin-top:2px; color:${pnlOrig >= 0 ? 'var(--success-color)' : 'var(--danger-color)'}">(${pnlOrig >= 0 ? '+' : ''}${pnlOrig.toLocaleString()})</div>` : ''}
-                            </td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1); color: ${returnColor}; font-weight: 600;">
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: ${returnColor}; font-weight: 600;">
                                 ${returnRate >= 0 ? '+' : ''}${returnRate.toFixed(2)}%
                             </td>
                         </tr>

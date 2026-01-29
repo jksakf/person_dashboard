@@ -42,8 +42,8 @@ function Invoke-RealizedPnLFlow {
         $currency = $group.Name
         $records = $group.Group
         
-        $currPnL = ($records | Measure-Object -Property "已實現損益" -Sum).Sum
-        $currCost = ($records | Measure-Object -Property "總成本" -Sum).Sum
+        $currPnL = ($records | Measure-Object -Property "已實現損益(原幣)" -Sum).Sum
+        $currCost = ($records | Measure-Object -Property "總成本(原幣)" -Sum).Sum
         
         $currRoi = 0
         if ($currCost -ne 0) {
