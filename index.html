@@ -11,8 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
     <!-- 引入 ChartDataLabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-    <!-- 引入 Chart.js Treemap Plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
     <!-- 引入 CountUp.js (數字捲動特效) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.0.7/countUp.min.js"></script>
     <!-- 引入 Google Fonts: Noto Sans TC (內文) + Roboto Mono (數字) -->
@@ -139,9 +137,15 @@
         }
 
         .tab-btn {
-            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            /* Brighter */
             border-radius: 12px;
             padding: 10px 24px;
+            font-weight: 700;
+            /* Bolder */
+            cursor: pointer;
         }
 
         .tab-btn.active {
@@ -197,18 +201,6 @@
             header h1 {
                 font-size: 2rem;
             }
-        }
-
-        .tab-btn:hover {
-            color: white;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .tab-btn.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--accent-color);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--glass-border);
         }
 
         /* Content Sections */
@@ -313,6 +305,41 @@
         tr:hover {
             background-color: rgba(255, 255, 255, 0.05);
             /* Subtle hover effect */
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg,
+                    rgba(255, 255, 255, 0.05) 25%,
+                    rgba(255, 255, 255, 0.1) 50%,
+                    rgba(255, 255, 255, 0.05) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+            color: transparent !important;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .skeleton-text {
+            height: 1em;
+            margin-bottom: 0.5em;
+            width: 80%;
+            display: inline-block;
+        }
+
+        .skeleton-rect {
+            width: 100%;
+            height: 200px;
+            border-radius: 12px;
         }
     </style>
 </head>
@@ -424,6 +451,10 @@
                 <div id="totalBankAssets" style="font-size: 3rem; font-weight: 700; color: var(--accent-color);">
                     $0
                 </div>
+                <!-- Sparkline Container -->
+                <div style="height: 60px; width: 100%; margin: 10px auto; max-width: 300px;">
+                    <canvas id="totalAssetSparkline"></canvas>
+                </div>
                 <div id="assetsDate" style="color: var(--text-secondary); margin-top: 5px; font-size: 0.9rem;">
                     (尚未載入資料)
                 </div>
@@ -497,14 +528,15 @@
                     <!-- Chart Switcher -->
                     <div style="position: absolute; top: 0; right: 0; z-index: 10; display: flex; gap: 5px;">
                         <button onclick="switchStockChart('pie')" id="btn-chart-pie" class="action-btn primary"
-                            style="padding: 5px 12px; font-size: 0.85rem;">圓餅圖</button>
+                            style="padding: 5px 12px; font-size: 0.9rem; font-weight: bold;">圓餅圖</button>
                         <button onclick="switchStockChart('bar')" id="btn-chart-bar" class="action-btn"
-                            style="padding: 5px 12px; font-size: 0.85rem; background: rgba(255,255,255,0.1); color: var(--text-color);">長條圖</button>
+                            style="padding: 5px 12px; font-size: 0.9rem; font-weight: bold; background: rgba(255,255,255,0.1); color: var(--text-main);">長條圖</button>
                         <button onclick="switchStockChart('bubble')" id="btn-chart-bubble" class="action-btn"
-                            style="padding: 5px 12px; font-size: 0.85rem; background: rgba(255,255,255,0.1); color: var(--text-color);">氣泡圖</button>
+                            style="padding: 5px 12px; font-size: 0.9rem; font-weight: bold; background: rgba(255,255,255,0.1); color: var(--text-main);">氣泡圖</button>
+                        <button onclick="switchStockChart('treemap')" id="btn-chart-treemap" class="action-btn"
+                            style="padding: 5px 12px; font-size: 0.9rem; font-weight: bold; background: rgba(255,255,255,0.1); color: var(--text-main);">樹狀圖</button>
                     </div>
                     <canvas id="stockPieChart"></canvas>
-                    <!-- <canvas id="stockTreemap" style="display: none;"></canvas> -->
                 </div>
             </div>
 
@@ -777,24 +809,21 @@
                 [btnPie, btnBar, btnBubble].forEach(btn => {
                     btn.classList.remove('primary');
                     btn.style.background = 'rgba(255,255,255,0.1)';
+                    btn.style.color = 'var(--text-main)'; // Fix text color when unselected
                 });
-
-                // Hide all canvases (we use the same canvas for Pie/Bar/Bubble basically, or separate?)
-                // Actually cleaner to use one canvas and destroy char instance.
-                // But previously we had separate partial Canvas. Let's assume we use 'stockPieChart' for everything
-                // except Treemap which had its own container maybe?
-                // Let's stick to using 'stockPieChart' canvas for ALL standard charts (Pie, Bar, Bubble)
-                // and hide Treemap if it exists (though we commented it out in HTML).
 
                 if (type === 'pie') {
                     btnPie.classList.add('primary');
                     btnPie.style.background = 'var(--accent-color)';
+                    btnPie.style.color = '#1e293b'; // Dark text on accent
                 } else if (type === 'bar') {
                     btnBar.classList.add('primary');
                     btnBar.style.background = 'var(--accent-color)';
+                    btnBar.style.color = '#1e293b';
                 } else if (type === 'bubble') {
                     btnBubble.classList.add('primary');
                     btnBubble.style.background = 'var(--accent-color)';
+                    btnBubble.style.color = '#1e293b';
                 }
 
                 // Re-render
@@ -829,6 +858,22 @@
                 return 0;
             }
 
+            // Skeleton Loading Helpers
+            function showSkeleton(containerId) {
+                const el = document.getElementById(containerId);
+                if (el) {
+                    el.classList.add('skeleton', 'skeleton-text');
+                    el.textContent = 'Loading...';
+                }
+            }
+
+            function hideSkeleton(containerId) {
+                const el = document.getElementById(containerId);
+                if (el) {
+                    el.classList.remove('skeleton', 'skeleton-text');
+                }
+            }
+
             // 處理檔案上傳
             function handleFileUpload(event, type) {
                 try {
@@ -845,7 +890,15 @@
                             type === 'realizedPnL' ? 'pnlStatus' : 'transStatus';
                     const statusEl = document.getElementById(statusId);
 
-                    statusEl.textContent = "⏳ 讀取中...";
+                    // Show skeleton on relevant big numbers or tables
+                    if (type === 'bankAssets') {
+                        showSkeleton('totalBankAssets');
+                    } else if (type === 'stockHoldings') {
+                        showSkeleton('totalMarketValue');
+                        showSkeleton('totalUnrealizedPnL');
+                    }
+
+                    statusEl.textContent = "⏳ 解析中...";
 
                     Papa.parse(file, {
                         header: true,
@@ -904,6 +957,7 @@
                                 if (type === 'bankAssets') {
                                     setTimeout(() => { // 稍微延遲讓 UI 更新
                                         try {
+                                            hideSkeleton('totalBankAssets');
                                             renderBankAssets();
                                             renderAssetTrend();
                                         } catch (renderErr) {
@@ -914,6 +968,8 @@
                                 } else if (type === 'stockHoldings') {
                                     setTimeout(() => {
                                         try {
+                                            hideSkeleton('totalMarketValue');
+                                            hideSkeleton('totalUnrealizedPnL');
                                             renderStockHoldings();
                                         } catch (renderErr) {
                                             console.error("Render Error:", renderErr);
@@ -1143,6 +1199,9 @@
 
                 // 9. 繪製明細表格
                 renderBankTable(currentData);
+
+                // 10. 繪製總資產 Sparkline
+                renderTotalAssetSparkline();
             }
 
             // 渲染銀行帳戶明細表格
@@ -1301,6 +1360,84 @@
                     }
                 });
             }
+
+            // 渲染總資產 Sparkline (迷你走勢圖)
+            function renderTotalAssetSparkline() {
+                const data = appData.bankAssets;
+                if (!data || data.length === 0) return;
+
+                // 1. 整理每日總資產 (與 renderAssetTrend 邏輯相同)
+                let dailyTotals = {};
+                data.forEach(item => {
+                    const date = item['日期'];
+                    if (!date || typeof date !== 'string' || date.trim() === '') return;
+                    const amount = parseMoney(item['金額']);
+                    dailyTotals[date] = (dailyTotals[date] || 0) + amount;
+                });
+
+                const sortedDates = Object.keys(dailyTotals).sort();
+                // 只取最近 30 筆數據 (若有)
+                const recentDates = sortedDates.slice(-30);
+                const recentAmounts = recentDates.map(date => dailyTotals[date]);
+
+                // 2. 獲取 Canvas Context
+                const ctx = document.getElementById('totalAssetSparkline').getContext('2d');
+
+                // 銷毀舊圖表
+                if (charts['totalAssetSparkline']) {
+                    charts['totalAssetSparkline'].destroy();
+                }
+
+                // 3. 建立漸層
+                const gradient = ctx.createLinearGradient(0, 0, 0, 60);
+                gradient.addColorStop(0, 'rgba(56, 189, 248, 0.5)'); // accent-color with opacity
+                gradient.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+
+                // 4. 繪製圖表
+                charts['totalAssetSparkline'] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: recentDates,
+                        datasets: [{
+                            data: recentAmounts,
+                            borderColor: '#38bdf8', // var(--accent-color)
+                            borderWidth: 2,
+                            backgroundColor: gradient,
+                            fill: true,
+                            pointRadius: 0, // 隱藏點
+                            pointHoverRadius: 4,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                intersect: false,
+                                displayColors: false,
+                                callbacks: {
+                                    title: () => '', // 隱藏標題
+                                    label: (ctx) => `$${ctx.raw.toLocaleString()}`
+                                }
+                            },
+                            datalabels: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                display: false // 隱藏 X 軸
+                            },
+                            y: {
+                                display: false, // 隱藏 Y 軸
+                                min: Math.min(...recentAmounts) * 0.95 // 讓波動看起來明顯一點
+                            }
+                        },
+                        layout: { padding: 0 }
+                    }
+                });
+            }
+
             function renderStockHoldings(targetDate = null) {
                 const data = appData.stockHoldings;
                 if (!data || data.length === 0) return;
@@ -1371,8 +1508,7 @@
                 } else if (currentStockChartType === 'bubble') {
                     renderStockBubbleChart(currentData);
                 } else {
-                    // Fallback or Treemap if needed later
-                    // renderStockTreemap(currentData);
+                    // Default to Pie
                 }
 
                 // 9. 繪製明細表格
@@ -1385,11 +1521,6 @@
 
                 if (charts['stockPie']) {
                     charts['stockPie'].destroy();
-                }
-                // Ensure treemap chart is destroyed if it exists
-                if (charts['stockTreemap']) {
-                    charts['stockTreemap'].destroy();
-                    charts['stockTreemap'] = null;
                 }
 
                 charts['stockPie'] = new Chart(ctx, {
