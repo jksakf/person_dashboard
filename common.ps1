@@ -24,11 +24,13 @@ function Get-Config {
     }
 
     try {
-        $Script:Config = Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+        $content = Get-Content -Path $Path -Raw -Encoding UTF8
+        $Script:Config = $content | ConvertFrom-Json
         return $Script:Config
     }
     catch {
-        Write-Error "無法解析設定檔: $_"
+        Write-Error "無法解析設定檔 ($Path)。請檢查 JSON 格式是否正確 (例如缺少逗號或引號)。"
+        Write-Error "詳細錯誤: $_"
         exit 1
     }
 }

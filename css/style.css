@@ -1,0 +1,352 @@
+:root {
+    /* 深色金融風主題變數 */
+    --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    /* 深藍黑漸層 */
+    --glass-bg: rgba(30, 41, 59, 0.65);
+    /* 半透明深色背景 */
+    --glass-border: rgba(255, 255, 255, 0.08);
+    /* 極細微的白框 */
+    --text-main: #f1f5f9;
+    /* 亮白文字 */
+    --text-secondary: #94a3b8;
+    /* 次要灰藍字 */
+    --accent-color: #38bdf8;
+    /* 天空藍強調色 */
+    --success-color: #34d399;
+    /* 柔和綠 (獲利) */
+    --danger-color: #f87171;
+    /* 柔和紅 (虧損) */
+    --card-radius: 24px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Noto Sans TC', sans-serif;
+}
+
+body {
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    color: var(--text-main);
+    padding: 40px 20px;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+header h1 {
+    font-size: 2.8rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    background: linear-gradient(to right, #fff, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    /* 文字漸層特效 */
+}
+
+header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* 通用卡片樣式：毛玻璃特效核心 */
+.dashboard-card,
+.upload-section {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    /* 背景模糊 */
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--card-radius);
+    padding: 30px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    /* 深邃陰影 */
+}
+
+.section-title {
+    font-size: 1.25rem;
+    color: var(--text-main);
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--glass-border);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 數字強制使用等寬字體 */
+.money-value,
+#totalBankAssets,
+#totalMarketValue,
+#totalUnrealizedPnL,
+td {
+    font-family: 'Roboto Mono', monospace;
+}
+
+/* 按鈕樣式優化 */
+button {
+    transition: all 0.2s ease;
+}
+
+button:active {
+    transform: scale(0.96);
+    /* 點擊微縮回饋 */
+}
+
+/* 導覽列優化 */
+.tabs {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px;
+    border-radius: 16px;
+    margin-bottom: 30px;
+    border: 1px solid var(--glass-border);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    /* Brighter */
+    border-radius: 12px;
+    padding: 10px 24px;
+    font-weight: 700;
+    /* Bolder */
+    cursor: pointer;
+}
+
+.tab-btn.active {
+    background: var(--accent-color);
+    color: #0f172a;
+    /* 深色背景上的深色文字對比度較好 */
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+}
+
+.tab-btn:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+/* 表格樣式優化 */
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+th {
+    text-align: left;
+    padding: 15px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--glass-border);
+    font-weight: 600;
+}
+
+td {
+    padding: 15px;
+    border-bottom: 1px solid var(--glass-border);
+    color: var(--text-main);
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+tr:hover td {
+    background: rgba(255, 255, 255, 0.03);
+    /* 滑鼠懸停微亮 */
+}
+
+/* RWD */
+@media (max-width: 768px) {
+    .upload-grid {
+        grid-template-columns: 1fr;
+    }
+
+    header h1 {
+        font-size: 2rem;
+    }
+}
+
+/* Content Sections */
+.tab-content {
+    display: none;
+    animation: fadeIn 0.5s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dashboard-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 30px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    margin-bottom: 25px;
+    color: var(--text-main);
+}
+
+.section-title {
+    font-size: 1.5rem;
+    color: var(--text-main);
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Placeholder Styles */
+.placeholder-text {
+    text-align: center;
+    padding: 50px;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2rem;
+    }
+
+    .tabs {
+        flex-direction: column;
+        width: 100%;
+        background: transparent;
+        padding: 0;
+    }
+
+    .tab-btn {
+        margin-bottom: 10px;
+        background: rgba(255, 255, 255, 0.2);
+        width: 100%;
+    }
+
+    .tab-btn.active {
+        background: white;
+    }
+}
+
+/* Table Styles for Dark Mode */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    color: var(--text-main);
+    /* Ensure text is light */
+}
+
+th,
+td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+th {
+    background-color: rgba(0, 0, 0, 0.2);
+    color: var(--accent-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    letter-spacing: 0.5px;
+}
+
+tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    /* Subtle hover effect */
+}
+
+/* Sticky Header for Tables */
+thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    /* Ensure opaque background so content doesn't bleed through */
+    border-bottom: 2px solid var(--glass-border);
+    /* Add shadow for depth */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: #1e293b;
+    /* Fallback */
+}
+
+/* Skeleton Loading Animation */
+.skeleton {
+    background: linear-gradient(90deg,
+            rgba(255, 255, 255, 0.05) 25%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    color: transparent !important;
+    user-select: none;
+    pointer-events: none;
+}
+
+/* Helper to hide content when loading (managed by JS class) */
+.is-loading .content-ready {
+    display: none;
+}
+
+.is-loading .skeleton-loader {
+    display: block;
+}
+
+.skeleton-loader {
+    display: none;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-text {
+    height: 1em;
+    margin-bottom: 0.5em;
+    width: 80%;
+    display: inline-block;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.skeleton-rect {
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
