@@ -715,6 +715,7 @@
                         // Trigger Renders
                         if (appData.bankAssets.length > 0) {
                             renderBankAssets();
+                            renderAssetTrend(); // Restore Asset Trend Chart
                             document.getElementById('bankStatus').textContent = '✅ 已還原';
                         }
                         if (appData.stockHoldings.length > 0) {
