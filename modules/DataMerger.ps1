@@ -108,6 +108,16 @@ function Invoke-DataMergerFlow {
                 }
 
                 foreach ($row in $content) {
+                    # --- 0. 排除空資料 (Fix empty rows issue) ---
+                    $hasData = $false
+                    foreach ($p in $row.PSObject.Properties) {
+                        if (-not [string]::IsNullOrWhiteSpace($p.Value)) {
+                            $hasData = $true
+                            break
+                        }
+                    }
+                    if (-not $hasData) { continue }
+
                     # --- 1. 日期修正 (強力 Regex 解析) ---
                     if ($dateCol -and $row.$dateCol) {
                         $rawDate = $row.$dateCol

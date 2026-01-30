@@ -125,7 +125,7 @@ App.Modules.Bank = {
                             let dataArr = ctx.chart.data.datasets[0].data;
                             dataArr.map(data => { sum += data; });
                             let percentageVal = (value / sum);
-                            if (percentageVal < 0.03) return null; // Hide if < 3%
+                            if (percentageVal < 0.05) return null; // Hide if < 3%
                             return (percentageVal * 100).toFixed(1) + "%";
                         },
                         textAlign: 'center'
