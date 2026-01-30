@@ -88,6 +88,12 @@ App.Data = {
                 if (el) el.textContent = '';
             });
 
+            // Clear Date Selectors
+            ['bankDateSelect', 'stockDateSelect'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = '<option value="">請選擇日期</option>';
+            });
+
             // Clear Storage
             this.clear();
 
