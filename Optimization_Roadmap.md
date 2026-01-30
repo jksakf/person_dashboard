@@ -135,7 +135,7 @@
 - [ ] 修改 `renderBankAssets` 等函式，套用數字捲動效果。
 - [ ] 調整 Chart.js 動畫參數。
 
-### [ ] Phase 2.4: 進階圖表 (Advanced Charts)
-- [ ] 引入 `chartjs-chart-treemap`。
-- [ ] 將「庫存分佈」圖表改為 Treemap。
-- [ ] 實作 Sparklines 迷你走勢圖。
+### [ ] Phase 2.5: 使用者體驗優化 (UX Polish) - **Current Focus**
+- [ ] **迷你走勢圖 (Sparklines)**: 在「總資產」下方顯示近期趨勢小圖。
+- [ ] **骨架屏 (Skeleton Loading)**: 資料載入前顯示閃爍色塊，提升質感。
+- [ ] **表格標題固定 (Sticky Header)**: 確保「交易明細」等長表格捲動時標題可見。

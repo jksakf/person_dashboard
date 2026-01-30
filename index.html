@@ -306,8 +306,22 @@
             background-color: rgba(255, 255, 255, 0.05);
             /* Subtle hover effect */
         }
+    </style>
+    <style>
+        /* Sticky Header for Tables */
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            /* Ensure opaque background so content doesn't bleed through */
+            border-bottom: 2px solid var(--glass-border);
+            /* Add shadow for depth */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            background: #1e293b;
+            /* Fallback */
+        }
 
-        /* Skeleton Loading */
+        /* Skeleton Loading Animation */
         .skeleton {
             background: linear-gradient(90deg,
                     rgba(255, 255, 255, 0.05) 25%,
@@ -317,6 +331,21 @@
             animation: shimmer 1.5s infinite;
             border-radius: 4px;
             color: transparent !important;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        /* Helper to hide content when loading (managed by JS class) */
+        .is-loading .content-ready {
+            display: none;
+        }
+
+        .is-loading .skeleton-loader {
+            display: block;
+        }
+
+        .skeleton-loader {
+            display: none;
         }
 
         @keyframes shimmer {
@@ -334,12 +363,14 @@
             margin-bottom: 0.5em;
             width: 80%;
             display: inline-block;
+            background-color: rgba(255, 255, 255, 0.05);
         }
 
         .skeleton-rect {
             width: 100%;
-            height: 200px;
+            height: 100%;
             border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.05);
         }
     </style>
 </head>
@@ -424,7 +455,7 @@
         <div id="history" class="tab-content">
             <div class="dashboard-card">
                 <h2 class="section-title">交易歷史流水帳</h2>
-                <div id="historyTableContainer" style="overflow-x: auto;">
+                <div id="historyTableContainer">
                     <div class="placeholder-text">
                         請上傳交易明細 CSV 檔案以檢視內容
                     </div>
@@ -446,17 +477,31 @@
             </div>
 
             <!-- 總資產卡片 -->
-            <div class="dashboard-card" style="text-align: center;">
+            <div id="bankAssetsCard" class="dashboard-card is-loading" style="text-align: center;">
                 <h2 style="color: var(--text-main); font-size: 2rem; margin-bottom: 10px;">總資產</h2>
-                <div id="totalBankAssets" style="font-size: 3rem; font-weight: 700; color: var(--accent-color);">
-                    $0
+
+                <!-- Skeleton Loader -->
+                <div class="skeleton-loader">
+                    <div class="skeleton"
+                        style="width: 200px; height: 3.5rem; margin: 0 auto 10px; border-radius: 8px;"></div>
+                    <div class="skeleton" style="width: 300px; height: 60px; margin: 10px auto; border-radius: 8px;">
+                    </div>
+                    <div class="skeleton" style="width: 150px; height: 1em; margin: 10px auto 0; border-radius: 4px;">
+                    </div>
                 </div>
-                <!-- Sparkline Container -->
-                <div style="height: 60px; width: 100%; margin: 10px auto; max-width: 300px;">
-                    <canvas id="totalAssetSparkline"></canvas>
-                </div>
-                <div id="assetsDate" style="color: var(--text-secondary); margin-top: 5px; font-size: 0.9rem;">
-                    (尚未載入資料)
+
+                <!-- Content Ready -->
+                <div class="content-ready">
+                    <div id="totalBankAssets" style="font-size: 3rem; font-weight: 700; color: var(--accent-color);">
+                        $0
+                    </div>
+                    <!-- Sparkline Container -->
+                    <div style="height: 60px; width: 100%; margin: 10px auto; max-width: 300px;">
+                        <canvas id="totalAssetSparkline"></canvas>
+                    </div>
+                    <div id="assetsDate" style="color: var(--text-secondary); margin-top: 5px; font-size: 0.9rem;">
+                        (尚未載入資料)
+                    </div>
                 </div>
             </div>
 
@@ -471,7 +516,7 @@
             <!-- 帳戶明細表格 -->
             <div class="dashboard-card">
                 <h2 class="section-title">帳戶明細</h2>
-                <div id="bankTableContainer" style="overflow-x: auto;">
+                <div id="bankTableContainer">
                     <div class="placeholder-text">
                         請上傳銀行資產 CSV 檔案以檢視明細
                     </div>
@@ -542,7 +587,7 @@
             <!-- 持股明細表格 -->
             <div class="dashboard-card">
                 <h2 class="section-title">持股明細</h2>
-                <div id="stockTableContainer" style="overflow-x: auto;">
+                <div id="stockTableContainer">
                     <div class="placeholder-text">
                         請上傳股票庫存 CSV 檔案以檢視明細
                     </div>
@@ -611,7 +656,7 @@
             <!-- 交易明細表格 -->
             <div class="dashboard-card">
                 <h2 class="section-title">交易明細</h2>
-                <div id="pnlTableContainer" style="overflow-x: auto;">
+                <div id="pnlTableContainer">
                     <div class="placeholder-text">
                         請上傳已實現損益 CSV 檔案以檢視明細
                     </div>
@@ -637,7 +682,62 @@
                 } else {
                     console.log("✅ 所有元件載入成功");
                     initDragAndDrop(); // Initialize Drag & Drop
+                    loadDataFromStorage(); // Load saved data
                 }
+            }
+
+            // Data Persistence Functions (LocalStorage)
+            const STORAGE_KEY = 'person_dashboard_data_v1';
+
+            function saveDataToStorage() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+                    console.log('✅ Data saved to LocalStorage');
+                } catch (e) {
+                    console.error('Failed to save data:', e);
+                }
+            }
+
+            function loadDataFromStorage() {
+                try {
+                    const json = localStorage.getItem(STORAGE_KEY);
+                    if (json) {
+                        const savedData = JSON.parse(json);
+
+                        // Merge or replace appData
+                        if (savedData.bankAssets) appData.bankAssets = savedData.bankAssets;
+                        if (savedData.stockHoldings) appData.stockHoldings = savedData.stockHoldings;
+                        if (savedData.realizedPnL) appData.realizedPnL = savedData.realizedPnL;
+                        if (savedData.transactions) appData.transactions = savedData.transactions;
+
+                        console.log('✅ Data loaded from LocalStorage', appData);
+
+                        // Trigger Renders
+                        if (appData.bankAssets.length > 0) {
+                            renderBankAssets();
+                            document.getElementById('bankStatus').textContent = '✅ 已還原';
+                        }
+                        if (appData.stockHoldings.length > 0) {
+                            renderStockHoldings();
+                            document.getElementById('stockStatus').textContent = '✅ 已還原';
+                        }
+                        if (appData.realizedPnL.length > 0) {
+                            renderRealizedPnL();
+                            document.getElementById('pnlStatus').textContent = '✅ 已還原';
+                        }
+                        if (appData.transactions.length > 0) {
+                            renderTransactionHistory();
+                            document.getElementById('transStatus').textContent = '✅ 已還原';
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to load data:', e);
+                }
+            }
+
+            function clearStorage() {
+                localStorage.removeItem(STORAGE_KEY);
+                console.log('🗑️ Storage cleared');
             }
 
             // Animation Helper using CountUp.js
@@ -951,6 +1051,9 @@
                                 // 3. 更新狀態顯示 (先更新文字，再畫圖)
                                 statusEl.textContent = `✅ 已載入 ${cleanData.length} 筆`;
 
+                                // Save Data
+                                saveDataToStorage();
+
                                 // 4. 觸發圖表更新
                                 if (type === 'bankAssets') {
                                     setTimeout(() => { // 稍微延遲讓 UI 更新
@@ -1023,6 +1126,9 @@
             function clearAllData() {
                 if (!confirm('確定要清除所有目前顯示的資料嗎？')) return;
 
+                // 0. 清除 LocalStorage
+                clearStorage();
+
                 // 1. 重置資料物件
                 appData = {
                     bankAssets: [],
@@ -1067,6 +1173,10 @@
                 // 6. 清空檔案輸入框
                 document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
 
+                // 7. 恢復 Skeleton 狀態
+                const bankCard = document.getElementById('bankAssetsCard');
+                if (bankCard) bankCard.classList.add('is-loading');
+
                 // alert('已清除所有資料！');
             }
 
@@ -1075,7 +1185,11 @@
             // targetDate: 指定要渲染的日期字串 (YYYY/MM/DD)，若無則預設最新
             function renderBankAssets(targetDate = null) {
                 const data = appData.bankAssets;
+                const card = document.getElementById('bankAssetsCard');
+
                 if (!data || data.length === 0) return;
+
+                if (card) card.classList.remove('is-loading');
 
                 // 1. 找出所有日期並排序 (新 -> 舊)
                 const uniqueDates = [...new Set(data.map(item => item['日期']))].sort().reverse();
@@ -1368,16 +1482,75 @@
                 // 1. 整理每日總資產 (與 renderAssetTrend 邏輯相同)
                 let dailyTotals = {};
                 data.forEach(item => {
-                    const date = item['日期'];
+                    const date = item['日期']; // Expected YYYY/MM/DD
                     if (!date || typeof date !== 'string' || date.trim() === '') return;
                     const amount = parseMoney(item['金額']);
                     dailyTotals[date] = (dailyTotals[date] || 0) + amount;
                 });
 
-                const sortedDates = Object.keys(dailyTotals).sort();
-                // 只取最近 30 筆數據 (若有)
-                const recentDates = sortedDates.slice(-30);
-                const recentAmounts = recentDates.map(date => dailyTotals[date]);
+                const sortedDataDates = Object.keys(dailyTotals).sort();
+                if (sortedDataDates.length === 0) return;
+
+                // 2026-01-30 Optimization: Normalize strictly to "Last 30 Days"
+                // Find the latest date in data
+                const lastDateStr = sortedDataDates[sortedDataDates.length - 1];
+                const lastDate = new Date(lastDateStr.replace(/-/g, '/')); // Handle potential separators
+
+                const recentDates = [];
+                const recentAmounts = [];
+                let currentBalance = 0;
+
+                // Determine initial balance for the start of the 30-day window
+                // Look for the latest available data point ON or BEFORE (lastDate - 30 days)
+                const windowStartDate = new Date(lastDate);
+                windowStartDate.setDate(windowStartDate.getDate() - 30);
+
+                // Find "last known value" before window start
+                // Simple search: iterate backwards from sortedDataDates
+                // Or simplified: Just let the loop handle it by finding the closest previous date
+
+                for (let i = 29; i >= 0; i--) {
+                    const d = new Date(lastDate);
+                    d.setDate(d.getDate() - i);
+
+                    // Format YYYY/MM/DD strict match
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const dateStr = `${y}/${m}/${day}`;
+                    // Also try - separator just in case
+                    const dateStrDash = `${y}-${m}-${day}`;
+
+                    recentDates.push(dateStr);
+
+                    // Check if exact match exists
+                    if (dailyTotals[dateStr] !== undefined) {
+                        currentBalance = dailyTotals[dateStr];
+                    } else if (dailyTotals[dateStrDash] !== undefined) {
+                        currentBalance = dailyTotals[dateStrDash];
+                    } else {
+                        // If no data for this day, we must find the LAST KNOWN balance
+                        // Only need to search if we haven't set currentBalance yet (start of window)
+                        if (currentBalance === 0 && recentAmounts.length === 0) {
+                            // Attempt to find latest data BEFORE this date
+                            // This ensures the chart doesn't start at 0 if the user has older data
+                            const targetTime = d.getTime();
+                            let bestMatch = null;
+                            for (let k = sortedDataDates.length - 1; k >= 0; k--) {
+                                const pDate = new Date(sortedDataDates[k].replace(/-/g, '/'));
+                                if (pDate.getTime() <= targetTime) {
+                                    bestMatch = sortedDataDates[k];
+                                    break;
+                                }
+                            }
+                            if (bestMatch) {
+                                currentBalance = dailyTotals[bestMatch];
+                            }
+                        }
+                        // Use carried forward balance
+                    }
+                    recentAmounts.push(currentBalance);
+                }
 
                 // 2. 獲取 Canvas Context
                 const ctx = document.getElementById('totalAssetSparkline').getContext('2d');
