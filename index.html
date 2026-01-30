@@ -438,7 +438,7 @@
             <!-- 日期選擇器 -->
             <div class="dashboard-card"
                 style="padding: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-                <label for="bankDateSelect" style="font-weight: bold; color: var(--text-secondary);">📅 選擇日期:</label>
+                <label for="bankDateSelect" style="font-weight: bold; color: var(--text-main);">📅 選擇日期:</label>
                 <select id="bankDateSelect" onchange="renderBankAssets(this.value)"
                     style="padding: 8px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; cursor: pointer; background-color: white;">
                     <option value="">(請先匯入資料)</option>
@@ -447,7 +447,7 @@
 
             <!-- 總資產卡片 -->
             <div class="dashboard-card" style="text-align: center;">
-                <h2 style="color: var(--text-secondary); font-size: 2rem; margin-bottom: 10px;">總資產</h2>
+                <h2 style="color: var(--text-main); font-size: 2rem; margin-bottom: 10px;">總資產</h2>
                 <div id="totalBankAssets" style="font-size: 3rem; font-weight: 700; color: var(--accent-color);">
                     $0
                 </div>
@@ -492,7 +492,7 @@
             <!-- 日期選擇器 -->
             <div class="dashboard-card"
                 style="padding: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 15px;">
-                <label for="stockDateSelect" style="font-weight: bold; color: var(--text-secondary);">📅 選擇日期:</label>
+                <label for="stockDateSelect" style="font-weight: bold; color: var(--text-main);">📅 選擇日期:</label>
                 <select id="stockDateSelect" onchange="renderStockHoldings(this.value)"
                     style="padding: 8px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; cursor: pointer; background-color: white;">
                     <option value="">(請先匯入資料)</option>
@@ -503,15 +503,15 @@
             <div class="dashboard-card" style="text-align: center;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div>
-                        <h2 style="color: var(--text-secondary); font-size: 2rem; margin-bottom: 10px;">總市值</h2>
+                        <h2 style="color: var(--text-main); font-size: 2rem; margin-bottom: 10px;">總市值</h2>
                         <div id="totalMarketValue"
-                            style="font-size: 2.5rem; font-weight: 700; color: var(--accent-color);">
+                            style="font-size: 3rem; font-weight: 700; color: var(--accent-color);">
                             $0
                         </div>
                     </div>
                     <div>
-                        <h2 style="color: var(--text-secondary); font-size: 2rem; margin-bottom: 10px;">未實現損益</h2>
-                        <div id="totalUnrealizedPnL" style="font-size: 2.5rem; font-weight: 700;">
+                        <h2 style="color: var(--text-main); font-size: 2rem; margin-bottom: 10px;">未實現損益</h2>
+                        <div id="totalUnrealizedPnL" style="font-size: 3rem; font-weight: 700;">
                             $0
                         </div>
                     </div>
@@ -533,8 +533,7 @@
                             style="padding: 5px 12px; font-size: 0.9rem; font-weight: bold; background: rgba(255,255,255,0.1); color: var(--text-main);">長條圖</button>
                         <button onclick="switchStockChart('bubble')" id="btn-chart-bubble" class="action-btn"
                             style="padding: 5px 12px; font-size: 0.9rem; font-weight: bold; background: rgba(255,255,255,0.1); color: var(--text-main);">氣泡圖</button>
-                        <button onclick="switchStockChart('treemap')" id="btn-chart-treemap" class="action-btn"
-                            style="padding: 5px 12px; font-size: 0.9rem; font-weight: bold; background: rgba(255,255,255,0.1); color: var(--text-main);">樹狀圖</button>
+
                     </div>
                     <canvas id="stockPieChart"></canvas>
                 </div>
@@ -578,21 +577,20 @@
             <div class="dashboard-card" style="text-align: center;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
                     <div>
-                        <h2 style="color: var(--text-secondary); font-size: 2rem; margin-bottom: 10px;">總已實現損益</h2>
-                        <div id="totalRealizedPnL" style="font-size: 2.5rem; font-weight: 700;">
+                        <h2 style="color: var(--text-main); font-size: 2rem; margin-bottom: 10px;">總已實現損益</h2>
+                        <div id="totalRealizedPnL" style="font-size: 3rem; font-weight: 700;">
                             $0
                         </div>
                     </div>
                     <div>
-                        <h2 style="color: var(--text-secondary); font-size: 2rem; margin-bottom: 10px;">總賣出價</h2>
-                        <div id="totalSalePrice"
-                            style="font-size: 2.5rem; font-weight: 700; color: var(--accent-color);">
+                        <h2 style="color: var(--text-main); font-size: 2rem; margin-bottom: 10px;">總賣出價</h2>
+                        <div id="totalSalePrice" style="font-size: 3rem; font-weight: 700; color: var(--accent-color);">
                             $0
                         </div>
                     </div>
                     <div>
-                        <h2 style="color: var(--text-secondary); font-size: 2rem; margin-bottom: 10px;">總成本</h2>
-                        <div id="totalCost" style="font-size: 2.5rem; font-weight: 700; color: var(--text-secondary);">
+                        <h2 style="color: var(--text-main); font-size: 2rem; margin-bottom: 10px;">總成本</h2>
+                        <div id="totalCost" style="font-size: 3rem; font-weight: 700; color: var(--text-secondary);">
                             $0
                         </div>
                     </div>
@@ -1153,7 +1151,8 @@
                                     font: {
                                         size: 16
                                     },
-                                    padding: 20
+                                    padding: 20,
+                                    color: '#fff'
                                 }
                             },
                             tooltip: {

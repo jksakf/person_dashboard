@@ -57,21 +57,20 @@ function Invoke-RealizedPnLFlow {
         Write-Host "  已實現損益: $([math]::Round($currPnL, 2))" -ForegroundColor $color
         Write-Host "  總報酬率  : $([math]::Round($currRoi, 2))%" -ForegroundColor $color
         
-        # 簡易換算台幣參考 (若非 TWD)
         if ($currency -ne "TWD") {
-            try {
-                $rate = Get-ExchangeRate -FromCurrency $currency -ToCurrency "TWD"
-                if ($rate) {
-                    $estTWD = $currPnL * $rate
-                    Write-Host "  (約合 TWD: $([math]::Round($estTWD, 0)))" -ForegroundColor DarkGray
-                }
-            }
-            catch {
-                Write-Log "匯率換算參考失敗 ($currency -> TWD): $_" -Level Debug
-            }
+            # 顯示該幣別的總 TWD (累加自每筆交易的歷史匯率換算)
+            $currTotalTWD = ($records | Measure-Object -Property "已實現損益(台幣)" -Sum).Sum
+            Write-Host "  (換算台幣: $([math]::Round($currTotalTWD, 0)))" -ForegroundColor DarkGray
         }
         Write-Host "-----------------------------"
     }
+
+    # 4. 顯示總結 (Grand Total)
+    $grandTotalPnL = ($pnlData | Measure-Object -Property "已實現損益(台幣)" -Sum).Sum
+    $grandTotalColor = if ($grandTotalPnL -ge 0) { "Green" } else { "Red" }
+    
+    Write-Host "`n💰 年度總損益 (台幣): $([math]::Round($grandTotalPnL, 0))" -ForegroundColor $grandTotalColor -BackgroundColor DarkGray
+
     
     # 4. 匯出
     $fileName = "${targetYear}1231_realized_pnl"
