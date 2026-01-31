@@ -296,8 +296,8 @@ App.Modules.Stock = {
                         formatter: (value, ctx) => {
                             let sum = 0;
                             let dataArr = ctx.chart.data.datasets[0].data;
-                            dataArr.map(data => { sum += data; });
-                            let percentageVal = (value / sum);
+                            dataArr.forEach(data => { sum += data.y; });
+                            let percentageVal = (value.y / sum);
                             if (percentageVal < 0.03) return null; // Hide if < 3%
                             return (percentageVal * 100).toFixed(1) + "%";
                         },
@@ -333,9 +333,9 @@ App.Modules.Stock = {
                         <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">股票代號</th>
                         <th style="padding: 12px; text-align: left; border: 1px solid #ddd;">股票名稱</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">持有股數</th>
+                        <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">幣別</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">平均成本</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總成本</th>
-                        <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">幣別</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">總市值(台幣)</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">未實現損益</th>
                         <th style="padding: 12px; text-align: right; border: 1px solid #ddd;">報酬率%</th>
@@ -346,12 +346,33 @@ App.Modules.Stock = {
 
         data.forEach((item, index) => {
             const qty = App.Utils.parseMoney(item['持有股數']);
-            const cost = App.Utils.parseMoney(item['總成本']);
-            const avgCost = qty > 0 ? (cost / qty) : 0;
+            const currency = item['幣別'] || 'TWD';
+
+            // 優先使用原幣成本，若無則使用總成本欄位
+            let totalCost = 0;
+            if (item['總成本(原幣)']) {
+                totalCost = App.Utils.parseMoney(item['總成本(原幣)']);
+            } else if (item['總成本']) {
+                totalCost = App.Utils.parseMoney(item['總成本']);
+            }
+
+            const avgCost = qty > 0 ? (totalCost / qty) : 0;
             const pnl = App.Utils.parseMoney(item['未實現損益']);
             const pnlColor = pnl >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
             const returnRate = App.Utils.parseMoney(item['報酬率%']);
             const returnColor = returnRate >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+
+            const marketValueTWD = App.Utils.parseMoney(item['市值(台幣)'] || item['市值']);
+
+            // 計算原幣市值 (如果有的話)
+            let marketValueDisplay = `$${marketValueTWD.toLocaleString()}`;
+            if (currency !== 'TWD' && item['市值(原幣)']) {
+                const marketValueOrig = App.Utils.parseMoney(item['市值(原幣)']);
+                marketValueDisplay = `
+                    <div>$${marketValueTWD.toLocaleString()}</div>
+                    <div style="font-size: 0.75em; color: #94a3b8; margin-top: 2px;">${currency} $${marketValueOrig.toLocaleString()}</div>
+                `;
+            }
 
             tableHTML += `
                 <tr>
@@ -359,10 +380,10 @@ App.Modules.Stock = {
                     <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['股票代號'] || '-'}</td>
                     <td style="padding: 10px; border: 1px solid rgba(255,255,255,0.1);">${item['股票名稱'] || '-'}</td>
                     <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${qty.toLocaleString()}</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${currency}</td>
                     <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${avgCost.toFixed(1)}</td>
-                    <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${cost.toLocaleString()}</td>
-                    <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${item['幣別'] || 'TWD'}</td>
-                    <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${App.Utils.parseMoney(item['市值(台幣)'] || item['市值']).toLocaleString()}</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">$${totalCost.toLocaleString()}</td>
+                    <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1);">${marketValueDisplay}</td>
                     <td style="padding: 10px; text-align: right; border: 1px solid rgba(255,255,255,0.1); color: ${pnlColor}; font-weight: 600;">
                         ${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString()}
                     </td>
