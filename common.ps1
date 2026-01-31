@@ -313,7 +313,7 @@ function Add-StockToList {
     
     $txtPath = Join-Path $Script:RootPath "stock_list.txt"
 
-    $ans = Get-CleanInput -Prompt "是否將 [$name ($code)] 加入常用清單? (y/N)" -DefaultValue "N" -Mandatory $false
+    $ans = Get-CleanInput -Prompt "是否將 [$name ($code)] 加入常用清單? (Y/n)" -DefaultValue "Y" -Mandatory $false
     if ($ans -eq "y" -or $ans -eq "Y") {
         if (-not $type) {
             $type = Get-CleanInput -Prompt "請輸入類別 (例如 台股, ETF, 港股)" -DefaultValue "台股"
@@ -418,7 +418,7 @@ function Select-Stock {
     }
 
     # Manual Input
-    $code = $stockInput # Default to input if look like code, but user can change
+    $code = Get-CleanInput -Prompt "請輸入股票代號" -DefaultValue $stockInput
     $name = Get-CleanInput -Prompt "請輸入股票名稱"
     $type = Get-CleanInput -Prompt "請輸入類別" -DefaultValue "台股"
     

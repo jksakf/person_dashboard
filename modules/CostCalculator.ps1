@@ -67,13 +67,22 @@ function Get-PortfolioStatus {
         $amountOrig = 0.0
         $amountTWD = 0.0
         
+        # [Strategy] 優先讀取明確記錄的 "交割金額(台幣)" (若有)
+        # 用於解決匯率換算誤差問題
+        if ($t.PSObject.Properties.Match('交割金額(台幣)').Count -gt 0 -and 
+            -not [string]::IsNullOrWhiteSpace($t.'交割金額(台幣)')) {
+            $amountTWD = [double]$t.'交割金額(台幣)'
+        }
+        
         if ($currency -eq "TWD") {
-            $amountTWD = $amount
+            # 若為台幣且無明確記錄，則 Amt 從總金額來
+            if ($amountTWD -eq 0) { $amountTWD = $amount }
             $amountOrig = if ($rate -gt 0) { $amount / $rate } else { $amount }
         }
         else {
             $amountOrig = $amount
-            $amountTWD = $amount * $rate
+            # 若無明確記錄，則用匯率算
+            if ($amountTWD -eq 0) { $amountTWD = $amount * $rate }
         }
 
         if (-not $portfolio.ContainsKey($code)) {
@@ -222,13 +231,20 @@ function Get-PnLReport {
         # 換算
         $amountOrig = 0.0
         $amountTWD = 0.0
+        
+        # [Strategy] 優先讀取 "交割金額(台幣)"
+        if ($t.PSObject.Properties.Match('交割金額(台幣)').Count -gt 0 -and 
+            -not [string]::IsNullOrWhiteSpace($t.'交割金額(台幣)')) {
+            $amountTWD = [double]$t.'交割金額(台幣)'
+        }
+
         if ($currency -eq "TWD") {
-            $amountTWD = $amount
+            if ($amountTWD -eq 0) { $amountTWD = $amount }
             $amountOrig = if ($rate -gt 0) { $amount / $rate } else { $amount }
         }
         else {
             $amountOrig = $amount
-            $amountTWD = $amount * $rate
+            if ($amountTWD -eq 0) { $amountTWD = $amount * $rate }
         }
 
         if ($type -match "買") {
@@ -300,7 +316,7 @@ function Get-PnLReport {
                 
                 $record = [ordered]@{
                     "日期"        = [datetime]::Parse($date).ToString("yyyy/MM/dd")
-                    "市場"        = if ($currency -eq "TWD") { "台股" } else { "外幣" }
+                    "市場"        = if ($currency -eq "TWD") { "台股" } elseif ($currency -eq "HKD") { "港股" } elseif ($currency -eq "USD") { "美股" } else { "外幣" }
                     "股票代號"      = $code
                     "股票名稱"      = $p.Name
                     "幣別"        = $currency
@@ -308,10 +324,10 @@ function Get-PnLReport {
                     "匯率"        = $rate
                     "總成本(原幣)"   = [math]::Round($cogsOrig, 2)
                     "賣出價(原幣)"   = [math]::Round($amountOrig, 2)
-                    "已實現損益(原幣)" = [math]::Round($pnlOrig, 2)
-                    "總成本(台幣)"   = [math]::Round($cogsTWD, 0)
-                    "賣出價(台幣)"   = [math]::Round($amountTWD, 0)
-                    "已實現損益(台幣)" = [math]::Round($pnlTWD, 0)
+                    "已實現損益(原幣)" = if ($currency -eq "TWD") { [math]::Floor($pnlOrig) } else { [math]::Round($pnlOrig, 2) }
+                    "總成本(台幣)"   = [math]::Floor($cogsTWD)
+                    "賣出價(台幣)"   = [math]::Floor($amountTWD)
+                    "已實現損益(台幣)" = [math]::Floor($pnlTWD)
                     "報酬率%"      = "$([math]::Round($roi, 2))%"
                 }
                 $pnlRecords.Add([PSCustomObject]$record) | Out-Null
