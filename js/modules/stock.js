@@ -95,11 +95,11 @@ App.Modules.Stock = {
 
     renderPieChart: function (labels, marketValues, totalMarketValue) {
         const ctx = document.getElementById('stockPieChart').getContext('2d');
-        if (App.Charts['stockPie']) {
-            App.Charts['stockPie'].destroy();
+        if (App.Charts['stockMain']) {
+            App.Charts['stockMain'].destroy();
         }
 
-        App.Charts['stockPie'] = new Chart(ctx, {
+        App.Charts['stockMain'] = new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: labels,
@@ -162,7 +162,7 @@ App.Modules.Stock = {
 
     renderBarChart: function (data) {
         const ctx = document.getElementById('stockPieChart').getContext('2d');
-        if (App.Charts['stockPie']) App.Charts['stockPie'].destroy();
+        if (App.Charts['stockMain']) App.Charts['stockMain'].destroy();
 
         // Sort by Market Value Desc
         const sortedData = [...data].sort((a, b) => {
@@ -175,10 +175,13 @@ App.Modules.Stock = {
         const values = sortedData.map(item => App.Utils.parseMoney(item['市值(台幣)'] || item['市值']));
         const colors = sortedData.map(item => {
             const pnl = App.Utils.parseMoney(item['未實現損益']);
-            return pnl >= 0 ? 'rgba(72, 187, 120, 0.8)' : 'rgba(245, 101, 101, 0.8)';
+            // Chart.js cannot parse CSS variables directly in canvas, using explicit colors matching theme
+            // --success-color: #34d399 -> rgba(52, 211, 153, 0.8)
+            // --danger-color: #f87171 -> rgba(248, 113, 113, 0.8)
+            return pnl >= 0 ? 'rgba(52, 211, 153, 0.8)' : 'rgba(248, 113, 113, 0.8)';
         });
 
-        App.Charts['stockPie'] = new Chart(ctx, {
+        App.Charts['stockMain'] = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
@@ -233,7 +236,7 @@ App.Modules.Stock = {
 
     renderBubbleChart: function (data) {
         const ctx = document.getElementById('stockPieChart').getContext('2d');
-        if (App.Charts['stockPie']) App.Charts['stockPie'].destroy();
+        if (App.Charts['stockMain']) App.Charts['stockMain'].destroy();
 
         const bubbleData = data.map(item => {
             const mktVal = App.Utils.parseMoney(item['市值(台幣)'] || item['市值']);
@@ -253,7 +256,7 @@ App.Modules.Stock = {
             };
         });
 
-        App.Charts['stockPie'] = new Chart(ctx, {
+        App.Charts['stockMain'] = new Chart(ctx, {
             type: 'bubble',
             data: {
                 datasets: [{
@@ -261,11 +264,11 @@ App.Modules.Stock = {
                     data: bubbleData,
                     backgroundColor: (ctx) => {
                         const val = ctx.raw?.x;
-                        return val >= 0 ? 'rgba(72, 187, 120, 0.7)' : 'rgba(245, 101, 101, 0.7)';
+                        return val >= 0 ? 'rgba(52, 211, 153, 0.7)' : 'rgba(248, 113, 113, 0.7)'; // success / danger
                     },
                     borderColor: (ctx) => {
                         const val = ctx.raw?.x;
-                        return val >= 0 ? '#48bb78' : '#f56565';
+                        return val >= 0 ? '#34d399' : '#f87171';
                     },
                     borderWidth: 2
                 }]

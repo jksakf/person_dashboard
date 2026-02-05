@@ -149,9 +149,12 @@ $portfolio[$code] = @{
 
 **功能流程**:
 1. **PriceFetcher** - 爬蟲引擎
-   - 目標網站: Yahoo Finance (台股/美股/港股/ETF)
+   - 目標網站: 
+     - 台股: TWSE/OTC
+     - 美股: Stooq (主要) / Yahoo (備用)
+     - 港股: 騰訊 API (主要) / 東方財富 (備用)
    - 抓取即時/收盤價
-   - 錯誤處理: 自動跳過失敗項目
+   - 錯誤處理: 自動切換備用來源 (Fallback)
 
 2. **PriceUpdater** - 市值計算
    - 讀取最新交易紀錄計算持倉

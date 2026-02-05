@@ -216,12 +216,7 @@ function Get-YahooPrice {
     )
 
     $symbol = $Code
-    # Safe Match for "港股" (港=6E2F)
-    if ($MarketType -match "HK" -or $MarketType -match [char]0x6E2F) {
-        # Yahoo Finance expects HK tickers without leading zeros (e.g. 01810 -> 1810.HK)
-        $cleanCode = [int]$Code
-        $symbol = "${cleanCode}.HK"
-    }
+
     
     # 支援 FX 模式
     if ($MarketType -eq "FX") {

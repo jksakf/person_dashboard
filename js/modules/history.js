@@ -35,7 +35,7 @@ App.Modules.History = {
 
         sortedData.forEach((item, index) => {
             const type = item['類別'];
-            const typeColor = type === '買進' ? '#d32f2f' : (type === '賣出' ? '#388e3c' : '#aaa');
+            const typeColor = type === '買進' ? 'var(--danger-color)' : (type === '賣出' ? 'var(--success-color)' : 'var(--text-secondary)');
             const typeLabel = `<span style="color: ${typeColor}; font-weight: bold;">${type}</span>`;
 
             const price = App.Utils.parseMoney(item['價格']);
