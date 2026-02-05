@@ -180,6 +180,20 @@ App.Modules.Bank = {
         container.innerHTML = tableHTML;
     },
 
+    // 計算適當的刻度單位 (Helper function)
+    calculateScaleUnit: function (maxValue) {
+        // 根據最大值決定使用的單位和除數
+        if (maxValue >= 100000000) { // >= 1億
+            return { divisor: 100000000, unit: '億', decimals: 1 };
+        } else if (maxValue >= 10000000) { // >= 1000萬
+            return { divisor: 10000000, unit: '千萬', decimals: 0 };
+        } else if (maxValue >= 1000000) { // >= 100萬
+            return { divisor: 1000000, unit: '百萬', decimals: 0 };
+        } else { // < 100萬，使用萬
+            return { divisor: 10000, unit: '萬', decimals: 0 };
+        }
+    },
+
     // 渲染資產趨勢圖 (Area Chart) + Sparkline Logic
     renderTrend: function () {
         const data = App.Data.store.bankAssets;
@@ -198,6 +212,10 @@ App.Modules.Bank = {
         const allDates = Object.keys(dailyTotals).sort();
         const sortedDates = allDates.filter(d => dailyTotals[d] > 0);
         const sortedAmounts = sortedDates.map(d => dailyTotals[d]);
+
+        // 計算最大值並決定刻度單位
+        const maxAmount = Math.max(...sortedAmounts);
+        const scaleConfig = this.calculateScaleUnit(maxAmount);
 
         // Update Sparkline
         this.updateSparkline(dailyTotals, sortedDates[sortedDates.length - 1], sortedDates);
@@ -254,14 +272,29 @@ App.Modules.Bank = {
                     },
                     datalabels: {
                         display: true, // Show labels
-                        align: 'top',
+                        align: function (context) {
+                            // 最後一個點向左對齊,避免被裁切
+                            const index = context.dataIndex;
+                            const total = context.dataset.data.length;
+                            return index === total - 1 ? 'left' : 'top';
+                        },
+                        anchor: function (context) {
+                            const index = context.dataIndex;
+                            const total = context.dataset.data.length;
+                            return index === total - 1 ? 'end' : 'end';
+                        },
+                        offset: function (context) {
+                            const index = context.dataIndex;
+                            const total = context.dataset.data.length;
+                            return index === total - 1 ? 0 : 8;
+                        },
                         color: '#fff',
                         backgroundColor: 'rgba(30, 41, 59, 0.7)',
                         borderRadius: 4,
                         font: { weight: 'bold', size: 12 },
                         padding: 4,
                         formatter: function (value) {
-                            return '$' + (value / 10000).toFixed(0) + '萬';
+                            return '$' + (value / scaleConfig.divisor).toFixed(scaleConfig.decimals) + scaleConfig.unit;
                         }
                     }
                 },
@@ -275,7 +308,7 @@ App.Modules.Bank = {
                         ticks: {
                             color: '#94a3b8',
                             callback: function (value) {
-                                return '$' + (value / 10000).toFixed(0) + '萬';
+                                return '$' + (value / scaleConfig.divisor).toFixed(scaleConfig.decimals) + scaleConfig.unit;
                             }
                         },
                         beginAtZero: false
@@ -285,6 +318,14 @@ App.Modules.Bank = {
                     intersect: false,
                     mode: 'index',
                 },
+                layout: {
+                    padding: {
+                        top: 30,    // 為上方標籤留空間
+                        right: 50,  // 為右側標籤留空間
+                        bottom: 0,
+                        left: 0
+                    }
+                }
             }
         });
     },

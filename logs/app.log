@@ -2125,3 +2125,167 @@ window.location.replace('https://' + window.location.host + '/?err=404');
 [2026-01-31 20:26:02] [Info] >>> 啟動 [自動更新股價] 流程...
 [2026-01-31 20:26:02] [Info] 已載入股票列表 (19 筆)
 [2026-01-31 20:26:06] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260131_stock_holdings.csv (筆數: 8)
+[2026-01-31 22:30:37] [Info] >>> 正在啟動 [資料合併] 模組...
+[2026-01-31 22:30:39] [Info] 已載入股票列表 (19 筆)
+[2026-01-31 22:30:39] [Info] 已載入股票對照表 (共 19 筆)，將自動統一 CSV 代號格式
+[2026-01-31 22:30:42] [Info] ✅ 合併成功: ALL_HISTORY_stock_holdings.csv (共 8 筆資料)
+[2026-01-31 22:30:44] [Info] ✅ 合併成功: ALL_HISTORY_bank_assets.csv (共 70 筆資料)
+[2026-01-31 22:30:48] [Info] ✅ 合併成功: ALL_HISTORY_realized_pnl.csv (共 16 筆資料)
+[2026-02-03 14:57:52] [Info] 正在載入腳本...
+[2026-02-03 14:59:10] [Info] >>> 進入 [交易明細錄入] 流程...
+[2026-02-03 14:59:10] [Info] 已載入股票列表 (19 筆)
+[2026-02-03 14:59:33] [Info] 已新增交易紀錄: 2026/02/03 | 2344 | 華邦電 | 買進 ...
+[2026-02-03 14:59:59] [Info] ✅ 已更新 stock_list.txt
+[2026-02-03 15:00:13] [Info] 已新增交易紀錄: 2026/02/03 | 2408 | 南亞科 | 買進 ...
+[2026-02-03 15:00:18] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-03 15:00:18] [Info] 已載入股票列表 (20 筆)
+[2026-02-03 15:00:21] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260203_stock_holdings.csv (筆數: 9)
+[2026-02-04 13:27:43] [Info] 正在載入腳本...
+[2026-02-04 13:27:45] [Info] >>> 進入 [交易明細錄入] 流程...
+[2026-02-04 13:27:45] [Info] 已載入股票列表 (20 筆)
+[2026-02-04 13:28:57] [Info] 已新增交易紀錄: 2026/02/04 | 2344 | 華邦電 | 賣出 ...
+[2026-02-04 13:29:04] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-04 13:29:09] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Realized_pnl\20260204_all1231_realized_pnl.csv (筆數: 17)
+[2026-02-04 13:39:41] [Info] 正在載入腳本...
+[2026-02-04 13:39:43] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-04 13:39:46] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Realized_pnl\20260204_all1231_realized_pnl.csv (筆數: 17)
+[2026-02-05 16:29:44] [Info] 正在載入腳本...
+[2026-02-05 16:30:02] [Info] >>> 進入 [交易明細錄入] 流程...
+[2026-02-05 16:30:02] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 16:30:29] [Info] 已新增交易紀錄: 2026/02/05 | 3260 | 威剛 | 賣出 ...
+[2026-02-05 16:31:58] [Info] >>> 正在啟動 [銀行資產] 模組...
+[2026-02-05 16:31:58] [Info] 已載入帳戶列表 (7 筆)
+[2026-02-05 16:32:08] [Info] ✅ 富邦 : 69755
+[2026-02-05 16:32:51] [Info] ✅ 將來 : 1655
+[2026-02-05 16:33:10] [Info] ✅ 國泰證券交割戶 : 22632
+[2026-02-05 16:33:50] [Info] ✅ 國泰(青年子帳戶) : 30000
+[2026-02-05 16:36:24] [Info] ✅ LINEPAY : 1794
+[2026-02-05 16:37:25] [Info] ✅ 股票/ETF(國泰) : 251010
+[2026-02-05 16:38:04] [Info] ✅ 休閒金 : 2500
+[2026-02-05 16:38:04] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Bank_assets\20260205_bank_assets.csv (筆數: 7)
+[2026-02-05 16:38:08] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 16:38:08] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 16:38:11] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 16:38:52] [Info] 正在載入腳本...
+[2026-02-05 16:38:56] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-05 16:39:01] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Realized_pnl\20260205_All1231_realized_pnl.csv (筆數: 18)
+[2026-02-05 16:44:53] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 16:44:53] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 16:44:57] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 16:45:10] [Info] >>> 進入 [刪除交易紀錄] 流程...
+[2026-02-05 16:45:16] [Info] >>> 正在啟動 [資料合併] 模組...
+[2026-02-05 16:45:24] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 16:45:24] [Info] 已載入股票對照表 (共 20 筆)，將自動統一 CSV 代號格式
+[2026-02-05 16:45:35] [Info] ✅ 合併成功: 2026_ANNUAL_stock_holdings.csv (共 24 筆資料)
+[2026-02-05 16:45:39] [Info] ✅ 合併成功: ALL_HISTORY_bank_assets.csv (共 77 筆資料)
+[2026-02-05 16:45:41] [Info] ✅ 合併成功: ALL_HISTORY_realized_pnl.csv (共 51 筆資料)
+[2026-02-05 16:50:25] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-05 16:57:24] [Info] 正在載入腳本...
+[2026-02-05 16:57:30] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-05 16:57:38] [Info] >>> 正在啟動 [資料合併] 模組...
+[2026-02-05 16:57:40] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 16:57:40] [Info] 已載入股票對照表 (共 20 筆)，將自動統一 CSV 代號格式
+[2026-02-05 16:58:01] [Info] ✅ 合併成功: ALL_HISTORY_stock_holdings.csv (共 17 筆資料)
+[2026-02-05 16:58:04] [Info] ✅ 合併成功: ALL_HISTORY_bank_assets.csv (共 77 筆資料)
+[2026-02-05 16:58:05] [Info] ✅ 合併成功: ALL_HISTORY_realized_pnl.csv (共 18 筆資料)
+[2026-02-05 16:59:08] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 16:59:08] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 16:59:13] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 17:14:28] [Info] 正在載入腳本...
+[2026-02-05 17:14:30] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 17:14:30] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 17:14:34] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 17:27:06] [Info] 正在載入腳本...
+[2026-02-05 17:27:07] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 17:27:07] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 17:27:10] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 17:41:09] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 17:41:09] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 17:41:12] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 17:41:17] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-05 17:41:19] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Realized_pnl\20260205_20261231_realized_pnl.csv (筆數: 6)
+[2026-02-05 17:41:47] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-05 17:41:50] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Realized_pnl\20260205_20241231_realized_pnl.csv (筆數: 6)
+[2026-02-05 17:41:57] [Info] >>> 正在啟動 [已實現損益] 報表模組...
+[2026-02-05 17:41:59] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Realized_pnl\20260205_20251231_realized_pnl.csv (筆數: 6)
+[2026-02-05 17:42:15] [Info] >>> 正在啟動 [資料合併] 模組...
+[2026-02-05 17:42:16] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 17:42:16] [Info] 已載入股票對照表 (共 20 筆)，將自動統一 CSV 代號格式
+[2026-02-05 17:42:21] [Info] ✅ 合併成功: ALL_HISTORY_stock_holdings.csv (共 24 筆資料)
+[2026-02-05 17:42:21] [Info] ✅ 合併成功: ALL_HISTORY_bank_assets.csv (共 77 筆資料)
+[2026-02-05 17:42:22] [Info] ✅ 合併成功: ALL_HISTORY_realized_pnl.csv (共 18 筆資料)
+[2026-02-05 17:59:15] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 17:59:15] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 17:59:18] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 17:59:24] [Info] 正在載入腳本...
+[2026-02-05 17:59:26] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 17:59:26] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 17:59:29] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 20:37:12] [Info] 正在載入腳本...
+[2026-02-05 20:37:14] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 20:37:14] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 20:37:19] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 20:41:09] [Info] 正在載入腳本...
+[2026-02-05 20:41:14] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 20:41:15] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 20:41:16] [Debug] Yahoo API Error (1810.HK): {"chart":{"result":null,"error":{"code":"Not Found","description":"No data found, symbol may be delisted"}}}
+[2026-02-05 20:41:18] [Debug] Yahoo Scraping Error (1810.HK): 
+
+if(window != window.top){
+document.write('Content is currently unavailable.');
+}else{
+window.location.replace('https://' + window.location.host + '/?err=404');
+}
+
+
+
+
+[2026-02-05 20:41:18] [Warning] Yahoo HK failed for 01810, fallback to Stooq
+[2026-02-05 20:41:23] [Debug] Yahoo API Error (9660.HK): {"chart":{"result":null,"error":{"code":"Not Found","description":"No data found, symbol may be delisted"}}}
+[2026-02-05 20:41:24] [Debug] Yahoo Scraping Error (9660.HK): 
+
+if(window != window.top){
+document.write('Content is currently unavailable.');
+}else{
+window.location.replace('https://' + window.location.host + '/?err=404');
+}
+
+
+
+
+[2026-02-05 20:41:24] [Warning] Yahoo HK failed for 09660, fallback to Stooq
+[2026-02-05 20:41:29] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 20:44:11] [Info] 正在載入腳本...
+[2026-02-05 20:44:27] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 20:44:27] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 20:44:27] [Debug] Yahoo API Error (1810.HK): {"chart":{"result":null,"error":{"code":"Not Found","description":"No data found, symbol may be delisted"}}}
+[2026-02-05 20:44:28] [Debug] Yahoo Scraping Error (1810.HK): 
+
+if(window != window.top){
+document.write('Content is currently unavailable.');
+}else{
+window.location.replace('https://' + window.location.host + '/?err=404');
+}
+
+
+
+
+[2026-02-05 20:44:29] [Warning] Yahoo HK failed for 01810, fallback to Stooq
+[2026-02-05 20:44:31] [Debug] Yahoo API Error (9660.HK): {"chart":{"result":null,"error":{"code":"Not Found","description":"No data found, symbol may be delisted"}}}
+[2026-02-05 20:44:32] [Debug] Yahoo Scraping Error (9660.HK): 
+
+if(window != window.top){
+document.write('Content is currently unavailable.');
+}else{
+window.location.replace('https://' + window.location.host + '/?err=404');
+}
+
+
+
+
+[2026-02-05 20:44:32] [Warning] Yahoo HK failed for 09660, fallback to Stooq
+[2026-02-05 20:44:34] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
+[2026-02-05 20:54:06] [Info] 正在載入腳本...
+[2026-02-05 20:54:07] [Info] >>> 啟動 [自動更新股價] 流程...
+[2026-02-05 20:54:07] [Info] 已載入股票列表 (20 筆)
+[2026-02-05 20:54:11] [Info] ✅ 成功匯出 CSV: C:\person\Me\Money\person_dashboard\output\history_data\Stock_holdings\20260205_stock_holdings.csv (筆數: 7)
