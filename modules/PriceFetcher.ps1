@@ -17,11 +17,19 @@ function Get-RealTimePrice {
         }
         # Safe Match for "港股" (港=6E2F)
         elseif ($MarketType -match "HK" -or $MarketType -match [char]0x6E2F) {
-            # Use Stooq as primary for HK (More reliable without key)
-            $price = Get-StooqPrice -Code $Code
+            # Use Tencent as primary for HK (Fastest ~100ms)
+            $price = Get-TencentHKPrice -Code $Code
+            
             if (-not $price) {
-                Write-Log "Stooq HK failed for $Code, fallback to Yahoo" -Level Warning
-                $price = Get-YahooPrice -Code $Code -MarketType $MarketType
+                # Backup 1: EastMoney (Reliable)
+                Write-Log "Tencent HK failed for $Code, trying EastMoney..." -Level Warning
+                $price = Get-EastMoneyHKPrice -Code $Code
+            }
+            
+            if (-not $price) {
+                # Backup 2: Stooq (Last resort)
+                Write-Log "EastMoney HK failed for $Code, fallback to Stooq" -Level Warning
+                $price = Get-StooqPrice -Code $Code
             }
             return $price
         }
@@ -45,6 +53,60 @@ function Get-RealTimePrice {
         Write-Log "抓取股價失敗 ($Code): $_" -Level Warning
         return $null
     }
+}
+
+function Get-TencentHKPrice {
+    param ([string]$Code)
+    # Tencent API: http://qt.gtimg.cn/q=hk$Code
+    # Format: v_hk01810="200,Name,Code,Price,..."
+    
+    $url = "http://qt.gtimg.cn/q=hk$Code"
+    try {
+        $response = Invoke-WebRequest -Uri $url -UseBasicParsing -ErrorAction Stop
+        $content = $response.Content
+        
+        if ($content -match '="([^"]+)"') {
+            $data = $matches[1] -split '~'
+            if ($data.Count -gt 3) {
+                $price = $data[3]
+                if ([double]::TryParse($price, [ref]$null)) {
+                    return [double]$price
+                }
+            }
+        }
+    }
+    catch {
+        Write-Log "Tencent API Error ($Code): $_" -Level Debug
+    }
+    return $null
+}
+
+function Get-EastMoneyHKPrice {
+    param ([string]$Code)
+    
+    # EastMoney secid: 116.股票代碼
+    $url = "https://push2.eastmoney.com/api/qt/stock/get?secid=116.$Code&fields=f43"
+    
+    try {
+        $response = Invoke-RestMethod -Uri $url -Headers @{ "User-Agent" = "Mozilla/5.0" } -ErrorAction Stop
+        
+        if ($response.data -and $response.data.f43) {
+            # f43 units logic check from benchmark:
+            # If > 10000 -> divide by 1000? Or just fixed logic?
+            # Benchmark showed: 34920 -> 34.92 (Div 1000)
+            # Benchmark showed: 8250 -> 8.25 (Div 1000)
+            
+            $val = $response.data.f43
+            if ($val -gt 0) {
+                return $val / 1000
+            }
+        }
+    }
+    catch {
+        Write-Log "EastMoney API Error ($Code): $_" -Level Debug
+    }
+    
+    return $null
 }
 
 function Get-StooqPrice {
