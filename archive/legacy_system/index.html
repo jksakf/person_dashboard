@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 
 <head>
@@ -25,9 +25,14 @@
 <body>
 
     <div class="container">
-        <header>
-            <h1>個人資產視覺化儀表板</h1>
-            <p>輕鬆追蹤銀行資產、股票庫存與投資損益</p>
+        <header style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div>
+                <h1>個人資產視覺化儀表板</h1>
+                <p>輕鬆追蹤銀行資產、股票庫存與投資損益 <span style="font-size: 0.85em; color: var(--success-color); margin-left: 10px;">⚡ 與工作台即時同步</span></p>
+            </div>
+            <a href="workbench.html" style="background: linear-gradient(135deg, #2563eb, #0ea5e9); color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(37,99,235,0.3);">
+                ⚡ 前往 PRO 一體化工作台
+            </a>
         </header>
 
         <!-- 檔案上傳區 -->
@@ -323,6 +328,7 @@
     <!-- 引入應用程式邏輯 -->
     <!-- Core (Namespace, Utils, Data) -->
     <script src="js/core/init.js"></script>
+    <script src="js/core/storage-service.js"></script>
     <script src="js/core/utils.js"></script>
     <script src="js/core/data.js"></script>
 

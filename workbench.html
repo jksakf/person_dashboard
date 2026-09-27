@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>個人資產一體化工作台 - 專業資產管理終端</title>
+
+    <!-- Google Fonts: Noto Sans TC + Roboto Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Roboto+Mono:wght@400;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Chart.js 視覺化圖表庫與 Datalabels 插件 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+
+    <!-- 工作台專屬樣式庫 -->
+    <link rel="stylesheet" href="css/workbench.css">
+</head>
+
+<body>
+
+    <!-- 頂部控制與主要頁籤導航列 -->
+    <header class="wb-header">
+        <div class="wb-header-left">
+            <div class="wb-header-title-box">
+                <span class="wb-header-badge">PRO v1.3</span>
+                <h1 class="wb-header-title">個人資產工作台</h1>
+            </div>
+
+            <!-- 5 大核心獨立頁籤導航 -->
+            <nav class="wb-nav-tabs" id="mainNavTabs">
+                <button class="wb-nav-tab active" data-view="overview" onclick="app.switchView('overview')">
+                    📊 總覽儀表板
+                </button>
+                <button class="wb-nav-tab" data-view="bank" onclick="app.switchView('bank')">
+                    🏦 銀行資產
+                </button>
+                <button class="wb-nav-tab" data-view="stock" data-module="stockHoldings"
+                    onclick="app.switchView('stock')">
+                    📦 股票庫存
+                </button>
+                <button class="wb-nav-tab" data-view="history" onclick="app.switchView('history')">
+                    📈 交易紀錄
+                </button>
+                <button class="wb-nav-tab" data-view="pnl" onclick="app.switchView('pnl')">
+                    💸 已實現損益
+                </button>
+            </nav>
+        </div>
+
+        <div class="wb-header-actions">
+            <!-- 總淨值摘要膠囊 -->
+            <div class="wb-kpi-summary-pill" title="即時換算最新淨值">
+                <span style="font-size:0.78rem; color:var(--text-muted);">總淨值:</span>
+                <span class="wb-kpi-val" id="topNetWorth">$0</span>
+            </div>
+
+            <!-- 備份與還原 -->
+            <button class="wb-btn sm" onclick="app.exportJson()" title="匯出完整 assets_data.json 備份檔">
+                💾 備份 JSON
+            </button>
+            <button class="wb-btn sm" onclick="document.getElementById('jsonFileInput').click()" title="還原/匯入 JSON 備份檔">
+                📥 匯入 JSON
+            </button>
+            <input type="file" id="jsonFileInput" accept=".json" style="display:none;"
+                onchange="app.importJsonFile(event)">
+
+            <!-- 常用清單管理 -->
+            <button class="wb-btn sm" onclick="app.openListManagerModal()" title="管理常用股票標的與銀行帳戶字典">
+                ⚙️ 常用清單
+            </button>
+
+            <!-- 深淺主題切換 -->
+            <button class="wb-btn sm" id="themeToggleBtn" onclick="app.toggleTheme()">
+                ☀️ 淺色
+            </button>
+        </div>
+    </header>
+
+    <!-- 100% 全螢幕寬幅主工作區 (5 大獨立視圖) -->
+    <main class="wb-view-container">
+
+        <!-- ==============================================
+             View 1: 📊 總覽儀表板 (Overview Dashboard)
+             ============================================== -->
+        <section class="wb-view active" id="view-overview">
+            <!-- 5 大核心 KPI 數據卡片 -->
+            <div class="wb-kpi-grid">
+                <div class="wb-kpi-card">
+                    <div class="wb-kpi-title">總資產淨值 (TWD)</div>
+                    <div class="wb-kpi-num" id="kpiNetWorth" style="color: var(--primary);">$0</div>
+                    <div class="wb-kpi-sub" id="kpiNetWorthSub">包含最新銀行存款與股票現值</div>
+                </div>
+
+                <div class="wb-kpi-card">
+                    <div class="wb-kpi-title">銀行存款總額 (當期)</div>
+                    <div class="wb-kpi-num" id="kpiBankTotal">$0</div>
+                    <div class="wb-kpi-sub" id="kpiBankDateSub">最新期次存款加總</div>
+                </div>
+
+                <div class="wb-kpi-card">
+                    <div class="wb-kpi-title">股票持股市值</div>
+                    <div class="wb-kpi-num" id="kpiStockTotal">$0</div>
+                    <div class="wb-kpi-sub" id="kpiStockSub">依最新結算期次</div>
+                </div>
+
+                <div class="wb-kpi-card">
+                    <div class="wb-kpi-title">持股未實現損益</div>
+                    <div class="wb-kpi-num" id="kpiUnrealizedPnL">$0</div>
+                    <div class="wb-kpi-sub">FIFO 批次加權成本計算</div>
+                </div>
+
+                <div class="wb-kpi-card">
+                    <div class="wb-kpi-title">歷史已實現總損益</div>
+                    <div class="wb-kpi-num" id="kpiRealizedPnL" style="color: var(--danger);">$0</div>
+                    <div class="wb-kpi-sub" id="kpiRealizedPnLSub">由交易紀錄 FIFO 平倉</div>
+                </div>
+            </div>
+
+            <!-- 個人總資產成長趨勢曲線 (全幅展開) -->
+            <div class="wb-chart-card" style="min-height:320px;">
+                <div class="wb-section-title">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span style="font-weight:700;">📈 個人總資產成長趨勢曲線</span>
+                        <span style="font-size:0.78rem; color:var(--text-muted);">(含各月存款與持股市值快照)</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                        <!-- 膠囊按鈕群 -->
+                        <div class="wb-pill-group" id="trendTimeRangeGroup">
+                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('6M')" data-range="6M">6M</button>
+                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('1Y')" data-range="1Y">1Y</button>
+                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('3Y')" data-range="3Y">3Y</button>
+                            <button type="button" class="wb-pill-btn active" onclick="app.setTrendTimeRange('ALL')" data-range="ALL">全部 (ALL)</button>
+                        </div>
+                        <span id="trendSummaryBadge" class="wb-tag bank">載入中...</span>
+                    </div>
+                </div>
+                <div class="wb-chart-container" style="min-height:260px;">
+                    <canvas id="netWorthTrendChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 📑 月度資產結算總表 (Monthly Net Worth Ledger) -->
+            <div class="wb-table-wrapper" style="margin-top: 1.25rem;">
+                <div class="wb-table-header-box" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <strong style="font-size: 0.98rem;">📑 月度資產結算總表</strong>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">(月末最後一日結算，點擊「✏️ 編輯」可手動校準)</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <button class="wb-btn sm" id="btnToggleLedgerExpand" onclick="app.toggleLedgerExpand()" style="font-size:0.78rem; padding:0.25rem 0.6rem;">
+                            展開全部月份 ▼
+                        </button>
+                    </div>
+                </div>
+                <div class="wb-table-scroll-container">
+                    <table class="wb-table">
+                        <thead>
+                            <tr>
+                                <th>月份期次</th>
+                                <th>結算基準日</th>
+                                <th class="text-right">純存款餘額 (TWD)</th>
+                                <th class="text-right">持股市值 (TWD)</th>
+                                <th class="text-right">總資產淨值 (TWD)</th>
+                                <th class="text-right">月增減額 (成長率)</th>
+                                <th style="text-align:center;">結算狀態</th>
+                                <th>備註</th>
+                                <th style="text-align:center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settlementLedgerBody">
+                            <!-- 由 JavaScript 動態填入 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 輔助圖表網格 -->
+            <div class="wb-chart-grid">
+                <!-- 資產分佈圓餅圖 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span>🥧 總資產配置比重 (當期)</span>
+                    </div>
+                    <div class="wb-chart-container">
+                        <canvas id="assetDoughnutChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 近期交易成交量分佈圖 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span>📊 近期交易成交量分佈 (月度)</span>
+                    </div>
+                    <div class="wb-chart-container">
+                        <canvas id="tradeBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==============================================
+             View 2: 🏦 銀行資產頁面 (Bank Assets)
+             ============================================== -->
+        <section class="wb-view" id="view-bank">
+            <div class="wb-view-toolbar">
+                <div class="wb-toolbar-left">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span style="font-size:0.85rem; font-weight:700; color:var(--text-muted);">📅 對帳月份快照:</span>
+                        <select class="wb-select" id="bankMonthSelect" style="min-width:180px; font-weight:600;"
+                            onchange="app.onBankMonthSelect(this.value)">
+                            <!-- 動態注入月份選項 -->
+                        </select>
+                        <button class="wb-btn sm" onclick="app.createMonthlySnapshot()" title="複製最新資產建立本月新快照">
+                            + 新月份快照
+                        </button>
+                    </div>
+                </div>
+                <div class="wb-toolbar-right">
+                    <button class="wb-btn sm primary" onclick="app.openBankDrawerForCreate()">
+                        + 新增/調整帳戶餘額
+                    </button>
+                    <button class="wb-btn sm" onclick="app.exportCsv('bankAssets')" title="匯出相容 Excel 之銀行 CSV">
+                        🏦 匯出銀行 CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- 全寬度銀行存款總表 -->
+            <div class="wb-table-wrapper">
+                <div class="wb-table-header-box">
+                    <strong style="font-size: 0.98rem;">🏦 銀行與貨幣資產明細表</strong>
+                    <span id="bankSummaryStats" style="font-size:0.8rem; color:var(--text-muted);">載入中...</span>
+                </div>
+                <div class="wb-table-scroll-container">
+                    <table class="wb-table">
+                        <thead>
+                            <tr>
+                                <th>對帳日期</th>
+                                <th>帳戶名稱</th>
+                                <th>帳戶類型</th>
+                                <th>幣別</th>
+                                <th class="text-right">原幣餘額</th>
+                                <th class="text-right">匯率</th>
+                                <th class="text-right">折合台幣 (TWD)</th>
+                                <th>備註</th>
+                                <th style="text-align:center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bankTableBody">
+                            <!-- 由 JavaScript 動態填入 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==============================================
+             View 3: 📦 股票庫存頁面 (Stock Holdings)
+             ============================================== -->
+        <section class="wb-view" id="view-stock">
+            <div class="wb-view-toolbar">
+                <div class="wb-toolbar-left" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span style="font-weight:700; font-size:1rem;">📦 股票持倉即時總表</span>
+                        <span id="stockSummaryStats" style="font-size:0.8rem; color:var(--text-muted);">FIFO
+                            先進先出即時計算</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                        <span style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">排序：</span>
+                        <select class="wb-select" id="stockSortSelect"
+                            style="font-size:0.8rem; padding:0.2rem 0.5rem; height:30px; width:auto;"
+                            onchange="app.changeStockSort(this.value)">
+                            <option value="marketValue_desc">💰 持股市值 (由大到小)</option>
+                            <option value="unrealizedPnL_desc">📈 未實現損益 (由大到小)</option>
+                            <option value="unrealizedPnL_asc">📉 未實現損益 (由小到大)</option>
+                            <option value="unrealizedRate_desc">🚀 報酬率 (由高到低)</option>
+                            <option value="shares_desc">📊 持有股數 (由大到小)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="wb-toolbar-right">
+                    <button class="wb-btn primary sm" id="btnRefreshLivePrices" onclick="app.refreshLiveStockPrices()"
+                        title="向證交所 API 抓取最新成交現價並即時重新計算損益">
+                        ⚡ 更新現價
+                    </button>
+                    <span id="livePriceUpdateBadge"
+                        style="font-size:0.75rem; color:var(--text-muted); align-self:center;"></span>
+                    <button class="wb-btn sm" onclick="app.toggleAllHoldingsExpand(true)">展開全部批次</button>
+                    <button class="wb-btn sm" onclick="app.toggleAllHoldingsExpand(false)">收合全部批次</button>
+                    <button class="wb-btn sm" onclick="app.switchView('history'); app.openTxDrawerForCreate();">
+                        + 登記買入/賣出
+                    </button>
+                </div>
+            </div>
+
+            <!-- 股票庫存圖表與總結區 -->
+            <div class="wb-chart-grid" style="margin-bottom: 1rem;">
+                <!-- 持股權重比例圓餅圖 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span>🥧 持股佔比分佈 (依市值權重)</span>
+                        <span id="stockTotalMarketValBadge" class="wb-tag stock">總市值: $0</span>
+                    </div>
+                    <div class="wb-chart-container" style="min-height:240px;">
+                        <canvas id="stockWeightChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 核心持股權重排行與損益清單 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span id="stockRankTitle">🏆 各標的市值佔比與排行</span>
+                        <span id="stockHoldingsCountBadge" class="wb-tag"
+                            style="background:rgba(56,189,248,0.15); color:#38bdf8;">共 0 檔標的</span>
+                    </div>
+                    <div id="stockRankList"
+                        style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; max-height:240px; padding-right:0.25rem;">
+                        <!-- 由 JavaScript 動態填入標的進度條與損益指標 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 股票持倉庫存大表 -->
+            <div class="wb-table-wrapper" id="holdingsTableSection">
+                <div class="wb-table-scroll-container">
+                    <table class="wb-table" id="holdingsTable">
+                        <thead>
+                            <tr>
+                                <th>股票代號</th>
+                                <th>股票名稱</th>
+                                <th class="text-right" style="cursor:pointer; user-select:none;"
+                                    onclick="app.setStockSort('shares')" title="點擊依持有股數排序">
+                                    持有股數 <span id="sortIconShares"
+                                        style="font-size:0.75rem; color:var(--primary);"></span>
+                                </th>
+                                <th class="text-right">加權均價</th>
+                                <th class="text-right">最新價格</th>
+                                <th class="text-right" style="cursor:pointer; user-select:none;"
+                                    onclick="app.setStockSort('marketValue')" title="點擊依持股市值排序">
+                                    持股市值 <span id="sortIconMarketValue"
+                                        style="font-size:0.75rem; color:var(--primary);">▼</span>
+                                </th>
+                                <th class="text-right" style="cursor:pointer; user-select:none;"
+                                    onclick="app.setStockSort('unrealizedPnL')" title="點擊依未實現損益排序">
+                                    未實現損益 (報酬率) <span id="sortIconUnrealizedPnL"
+                                        style="font-size:0.75rem; color:var(--primary);"></span>
+                                </th>
+                                <th style="text-align:center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holdingsTableBody">
+                            <!-- 由 JavaScript 動態注入持倉與批次拆解行 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==============================================
+             View 4: 📈 交易紀錄頁面 (Transactions History)
+             ============================================== -->
+        <section class="wb-view" id="view-history">
+            <div class="wb-view-toolbar">
+                <div class="wb-toolbar-left" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                    <input type="text" class="wb-search-input" id="historySearchInput" placeholder="🔍 搜尋標的代號、名稱、備註..."
+                        style="width:220px;" oninput="app.onHistorySearch(this.value)">
+                    <select class="wb-select" id="historyActionFilter" style="width:105px;"
+                        onchange="app.onHistoryFilterChange()">
+                        <option value="ALL">全部類別</option>
+                        <option value="買入">買入</option>
+                        <option value="賣出">賣出</option>
+                    </select>
+                    <select class="wb-select" id="historySortSelect"
+                        style="width:auto; font-size:0.8rem; padding:0.2rem 0.5rem; height:32px;"
+                        onchange="app.changeHistorySort(this.value)">
+                        <option value="date_desc">📅 日期 (由新到舊)</option>
+                        <option value="date_asc">📅 日期 (由舊到新)</option>
+                        <option value="amount_desc">💰 金額 (由大到小)</option>
+                        <option value="amount_asc">💰 金額 (由小到大)</option>
+                    </select>
+                    <span id="historyCountBadge" style="font-size:0.8rem; color:var(--text-muted); align-self:center;">
+                        共 0 筆
+                    </span>
+                </div>
+                <div class="wb-toolbar-right">
+                    <button class="wb-btn sm primary" onclick="app.openTxDrawerForCreate()">
+                        + 新增交易紀錄
+                    </button>
+                    <button class="wb-btn sm" onclick="app.exportCsv('transactions')" title="匯出相容 Excel 之交易 CSV">
+                        📊 匯出交易 CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- 交易紀錄大表 -->
+            <div class="wb-table-wrapper">
+                <div class="wb-table-scroll-container">
+                    <table class="wb-table">
+                        <thead>
+                            <tr>
+                                <th style="cursor:pointer; user-select:none;" onclick="app.setHistorySort('date')"
+                                    title="點擊依交易日期排序">
+                                    交易日期 <span id="sortIconHistDate"
+                                        style="font-size:0.75rem; color:var(--primary);">▼</span>
+                                </th>
+                                <th>類別</th>
+                                <th>股票代號</th>
+                                <th>股票名稱</th>
+                                <th class="text-right">成交價格</th>
+                                <th class="text-right">股數</th>
+                                <th class="text-right">手續費</th>
+                                <th class="text-right">證交稅</th>
+                                <th class="text-right">原幣總額</th>
+                                <th class="text-right" style="cursor:pointer; user-select:none;"
+                                    onclick="app.setHistorySort('amount')" title="點擊依折合台幣金額排序">
+                                    折合台幣 (TWD) <span id="sortIconHistAmount"
+                                        style="font-size:0.75rem; color:var(--primary);"></span>
+                                </th>
+                                <th>備註</th>
+                                <th style="text-align:center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <!-- 由 JavaScript 動態填入 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==============================================
+             View 5: 💸 已實現損益頁面 (Realized PnL)
+             ============================================== -->
+        <section class="wb-view" id="view-pnl">
+            <div class="wb-view-toolbar" style="flex-wrap:wrap; gap:0.6rem;">
+                <div class="wb-toolbar-left" style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                    <input type="text" class="wb-search-input" id="pnlSearchInput" placeholder="🔍 搜尋已平倉標的、名稱..."
+                        style="width:190px;" oninput="app.onPnLSearch(this.value)">
+
+                    <!-- 快捷週期標籤組 -->
+                    <div class="wb-btn-group" id="pnlDateQuickGroup"
+                        style="display:flex; gap:0.25rem; background:rgba(255,255,255,0.05); padding:0.2rem; border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
+                        <button class="wb-btn sm active" data-pnl-range="ALL" onclick="app.setPnlDateRange('ALL')"
+                            style="font-size:0.78rem; padding:0.2rem 0.55rem;">全部</button>
+                        <button class="wb-btn sm" data-pnl-range="YTD" onclick="app.setPnlDateRange('YTD')"
+                            style="font-size:0.78rem; padding:0.2rem 0.55rem;">今年 YTD</button>
+                        <button class="wb-btn sm" data-pnl-range="1Y" onclick="app.setPnlDateRange('1Y')"
+                            style="font-size:0.78rem; padding:0.2rem 0.55rem;">近 1 年</button>
+                        <button class="wb-btn sm" data-pnl-range="3M" onclick="app.setPnlDateRange('3M')"
+                            style="font-size:0.78rem; padding:0.2rem 0.55rem;">近 3 個月</button>
+                        <button class="wb-btn sm" data-pnl-range="1M" onclick="app.setPnlDateRange('1M')"
+                            style="font-size:0.78rem; padding:0.2rem 0.55rem;">本月</button>
+                    </div>
+
+                    <!-- 自訂起訖日期選擇框 -->
+                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                        <input type="date" class="wb-input sm mono" id="pnlStartDate"
+                            style="width:130px; font-size:0.8rem; padding:0.2rem 0.4rem; height:30px;"
+                            onchange="app.onPnlCustomDateChange()" title="平倉起始日期">
+                        <span style="color:var(--text-muted); font-size:0.8rem;">～</span>
+                        <input type="date" class="wb-input sm mono" id="pnlEndDate"
+                            style="width:130px; font-size:0.8rem; padding:0.2rem 0.4rem; height:30px;"
+                            onchange="app.onPnlCustomDateChange()" title="平倉結束日期">
+                        <button class="wb-btn sm" onclick="app.setPnlDateRange('ALL')" title="清除日期篩選"
+                            style="padding:0.2rem 0.45rem; font-size:0.75rem;">✕</button>
+                    </div>
+
+                    <span id="realizedStatsBadge" class="wb-tag bank"
+                        style="font-size:0.82rem; padding:0.35rem 0.75rem; white-space:nowrap;">
+                        計算中...
+                    </span>
+                </div>
+                <div class="wb-toolbar-right">
+                    <button class="wb-btn sm" onclick="app.exportCsv('realizedPnL')" title="匯出當前篩選期間之已實現損益 CSV">
+                        💸 匯出已實現 CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- 已實現損益圖表與戰績排行榜區 -->
+            <div class="wb-chart-grid" style="margin-bottom: 1rem;">
+                <!-- 獲利標的貢獻佔比圓餅圖 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span>🥧 已實現獲利貢獻佔比 (前大獲利標的)</span>
+                        <span id="pnlTotalProfitBadge" class="wb-tag stock">獲利總和: +$0</span>
+                    </div>
+                    <div class="wb-chart-container" style="min-height:240px;">
+                        <canvas id="realizedWeightChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 歷史平倉個股損益排行清單 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span>🏆 標的累計平倉損益排行</span>
+                        <span id="pnlTradedCountBadge" class="wb-tag"
+                            style="background:rgba(56,189,248,0.15); color:#38bdf8;">共 0 檔平倉</span>
+                    </div>
+                    <div id="pnlRankList"
+                        style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; max-height:240px; padding-right:0.25rem;">
+                        <!-- 由 JavaScript 動態填入標的進度條與損益指標 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 已實現損益明細大表 -->
+            <div class="wb-table-wrapper" id="realizedTableSection">
+                <div class="wb-table-scroll-container">
+                    <table class="wb-table">
+                        <thead>
+                            <tr>
+                                <th>平倉日期</th>
+                                <th>市場</th>
+                                <th>股票代號</th>
+                                <th>股票名稱</th>
+                                <th class="text-right">賣出股數</th>
+                                <th class="text-right">買進成本 (TWD)</th>
+                                <th class="text-right">賣出金額 (TWD)</th>
+                                <th class="text-right">已實現損益 (TWD)</th>
+                                <th class="text-right">報酬率</th>
+                                <th style="text-align:center;">關聯操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="realizedTableBody">
+                            <!-- 由 JavaScript 動態填入 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 右側滑出抽屜 (Slide-over Drawer) 與毛玻璃背景遮罩 -->
+    <div class="wb-drawer-backdrop" id="drawerBackdrop" onclick="app.closeDrawer()"></div>
+    <aside class="wb-drawer" id="drawerPane">
+        <div class="wb-drawer-header">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span id="drawerTitle" style="font-weight:700; font-size:1rem;">編輯紀錄</span>
+                <span id="drawerBadge" class="wb-tag"></span>
+            </div>
+            <button class="wb-btn sm" onclick="app.closeDrawer()" title="關閉抽屜 (Esc)">✕</button>
+        </div>
+        <div class="wb-drawer-body" id="drawerBody">
+            <!-- 由 JavaScript 動態填入表單 -->
+        </div>
+    </aside>
+
+    <!-- ⚙️ 常用清單管理彈窗 (List Manager Modal) -->
+    <div class="wb-modal-backdrop" id="listManagerBackdrop" onclick="app.closeListManagerModal()"></div>
+    <div class="wb-modal-pane" id="listManagerModal">
+        <div class="wb-modal-header">
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <span style="font-weight:700; font-size:1.05rem;">⚙️ 常用清單字典管理</span>
+                <span class="wb-tag" style="background:rgba(56,189,248,0.15); color:var(--primary);">下拉選單連動</span>
+            </div>
+            <button class="wb-btn sm" onclick="app.closeListManagerModal()" title="關閉彈窗 (Esc)">✕</button>
+        </div>
+
+        <!-- 彈窗內部雙頁籤切換 -->
+        <div class="wb-modal-tabs">
+            <button class="wb-modal-tab active" id="tabStockDict" onclick="app.switchListManagerTab('stock')">
+                📈 常用股票標的 (<span id="stockDictCount">0</span>)
+            </button>
+            <button class="wb-modal-tab" id="tabAccountDict" onclick="app.switchListManagerTab('account')">
+                🏦 常用銀行帳戶 (<span id="accountDictCount">0</span>)
+            </button>
+        </div>
+
+        <div class="wb-modal-body">
+            <!-- 1. 常用股票標的面板 -->
+            <div id="panelStockDict">
+                <div class="wb-dict-add-bar">
+                    <select id="newStockMarket" class="wb-select sm" style="width:90px;">
+                        <option value="台股">台股</option>
+                        <option value="ETF">ETF</option>
+                        <option value="美股">美股</option>
+                        <option value="港股">港股</option>
+                    </select>
+                    <input type="text" id="newStockCode" class="wb-input sm" placeholder="股票代號 (例: 2330)"
+                        style="width:130px;">
+                    <input type="text" id="newStockName" class="wb-input sm" placeholder="股票名稱 (例: 台積電)"
+                        style="flex:1;">
+                    <button class="wb-btn sm primary" onclick="app.addStockDictItem()">+ 新增標的</button>
+                </div>
+                <div style="margin: 0.6rem 0;">
+                    <input type="text" id="stockDictSearchInput" class="wb-search-input" placeholder="🔍 快速搜尋代號或名稱..."
+                        oninput="app.filterStockDictList(this.value)" style="width:100%;">
+                </div>
+                <div class="wb-dict-table-container">
+                    <table class="wb-table sm">
+                        <thead>
+                            <tr>
+                                <th style="width:70px;">市場</th>
+                                <th style="width:100px;">代號</th>
+                                <th>股票名稱</th>
+                                <th style="width:80px; text-align:center;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockDictTableBody">
+                            <!-- 由 JavaScript 動態填入 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 2. 常用銀行帳戶面板 -->
+            <div id="panelAccountDict" style="display:none;">
+                <div class="wb-dict-add-bar">
+                    <input type="text" id="newAccountName" class="wb-input sm" placeholder="輸入銀行或帳戶名稱 (例: 國泰證券交割戶)"
+                        style="flex:1;">
+                    <button class="wb-btn sm primary" onclick="app.addAccountDictItem()">+ 新增帳戶</button>
+                </div>
+                <div style="margin: 0.6rem 0;">
+                    <input type="text" id="accountDictSearchInput" class="wb-search-input" placeholder="🔍 快速搜尋銀行帳戶..."
+                        oninput="app.filterAccountDictList(this.value)" style="width:100%;">
+                </div>
+                <div class="wb-account-tag-grid" id="accountTagGrid">
+                    <!-- 由 JavaScript 動態填入帳戶徽章標籤 -->
+                </div>
+            </div>
+        </div>
+
+        <div class="wb-modal-footer">
+            <div style="display:flex; gap:0.5rem;">
+                <button class="wb-btn sm" id="btnExportTxt" onclick="app.exportCurrentDictTxt()">📤 匯出 TXT</button>
+                <button class="wb-btn sm" id="btnImportTxt"
+                    onclick="document.getElementById('dictFileInput').click()">📥 匯入 TXT</button>
+                <input type="file" id="dictFileInput" accept=".txt" style="display:none;"
+                    onchange="app.importCurrentDictTxt(event)">
+            </div>
+            <button class="wb-btn sm primary" onclick="app.closeListManagerModal()">完成</button>
+        </div>
+    </div>
+
+    <!-- 月度資產結算微調 Modal (SettlementEditModal) -->
+    <div class="wb-modal-backdrop" id="modalSettlementEdit">
+        <div class="wb-modal" style="max-width: 480px;">
+            <div class="wb-modal-header">
+                <h3 id="modalSettlementTitle">✏️ 微調月度資產結算</h3>
+                <button class="wb-modal-close" onclick="app.closeSettlementEditModal()">&times;</button>
+            </div>
+            <div class="wb-modal-body">
+                <input type="hidden" id="editSettlementMonth">
+                <div class="wb-form-group">
+                    <label class="wb-label">月份期次與基準日</label>
+                    <input type="text" id="editSettlementDateDisplay" class="wb-input" readonly style="opacity:0.8; background:var(--bg-card-hover);">
+                </div>
+                <div class="wb-form-group">
+                    <label class="wb-label">純銀行存款總額 (TWD) <span style="color:var(--danger)">*</span></label>
+                    <input type="number" id="editSettlementBank" class="wb-input" placeholder="請輸入純存款折合台幣總額" required oninput="app.updateSettlementTotalPreview()">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">排除股票科目之真實存款總和</div>
+                </div>
+                <div class="wb-form-group">
+                    <label class="wb-label">月末持股市值 (TWD) <span style="color:var(--danger)">*</span></label>
+                    <input type="number" id="editSettlementStock" class="wb-input" placeholder="請輸入月末持股現值" required oninput="app.updateSettlementTotalPreview()">
+                    <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">該月末之股票/ETF市值總額</div>
+                </div>
+                <div class="wb-form-group">
+                    <label class="wb-label">合計總淨值 (試算)</label>
+                    <div id="editSettlementTotalDisplay" style="font-size:1.15rem; font-weight:700; color:var(--primary); padding:0.4rem 0;">$0</div>
+                </div>
+                <div class="wb-form-group">
+                    <label class="wb-label">微調原因 / 備註</label>
+                    <input type="text" id="editSettlementNote" class="wb-input" placeholder="例如：手動校正對齊銀行紙本存摺">
+                </div>
+            </div>
+            <div class="wb-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                <button type="button" class="wb-btn sm" id="btnResetSettlement" onclick="app.resetSettlementEdit()" title="清除手動覆寫標記，恢復系統預設自動結算">
+                    ↩️ 還原為自動計算
+                </button>
+                <div style="display:flex; gap:0.5rem;">
+                    <button type="button" class="wb-btn sm" onclick="app.closeSettlementEditModal()">取消</button>
+                    <button type="button" class="wb-btn sm primary" onclick="app.saveSettlementEdit()">💾 儲存並更新圖表</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HTML5 Datalists 下拉候選清單 (支援打字模糊搜尋與快速點選) -->
+    <datalist id="stockCodeList">
+        <!-- 由 JavaScript 動態注入 stock_list 與交易標的 -->
+    </datalist>
+    <datalist id="bankAccountList">
+        <!-- 由 JavaScript 動態注入 account_list 與銀行帳戶 -->
+    </datalist>
+
+    <!-- 核心運算引擎與主應用腳本載入 -->
+    <script src="js/core/storage-service.js?v=20260927_v1"></script>
+    <script src="js/core/workbench-engine.js?v=20260927_v1"></script>
+    <script src="js/core/data-converter.js?v=20260927_v1"></script>
+    <script src="js/workbench-app.js?v=20260927_v1"></script>
+</body>
+
+</html>

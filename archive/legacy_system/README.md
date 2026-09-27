@@ -1,4 +1,4 @@
-# 個人資產視覺化系統 - 完整技術文件
+﻿# 個人資產視覺化系統 - 完整技術文件
 
 ## 📋 系統概述
 
@@ -24,10 +24,11 @@
 
 ## 🏗️ 系統架構
 
-### 後端模組 (PowerShell)
+### 啟動入口與模組
 
 ```
-AssetManager.ps1 (主程式入口)
+Start-Workbench.bat (⭐ 推薦入口: 雙擊一鍵啟動輕量服務與工作台)
+AssetManager.ps1 (傳統 PowerShell 終端互動入口)
 ├── common.ps1 (共用函數庫)
 │   ├── Get-Config          - 設定檔載入
 │   ├── Write-Log           - 日誌記錄系統
@@ -52,7 +53,14 @@ AssetManager.ps1 (主程式入口)
 ### 前端模組 (JavaScript)
 
 ```
-index.html (視覺化儀表板)
+workbench.html (⭐ 全新一體化填報與即時分析工作台 - 推薦使用)
+├── css/workbench.css       - 現代化三欄沉浸式樣式 (支援深/淺色主題與等寬金融字型)
+├── js/core/
+│   ├── workbench-engine.js - 金融運算核心 (即時 FIFO 庫存追蹤、手續費低消與防超賣)
+│   └── data-converter.js   - 資料雙向轉換層 (相容舊版 CSV 與 UTF-8 with BOM 匯出)
+└── js/workbench-app.js     - 主控制器 (即時欄位試算、LocalStorage 防抖自動快照、圖表聯動)
+
+index.html (傳統多分頁檢視儀表板)
 ├── js/
 │   ├── main.js             - 程式進入點與事件綁定
 │   ├── core/
@@ -65,6 +73,16 @@ index.html (視覺化儀表板)
 │       ├── pnl.js          - 損益分析視覺化
 │       └── history.js      - 交易歷史表格渲染
 ```
+
+---
+
+## ⭐ 全新推薦：個人資產一體化工作台 (workbench.html)
+
+為提升填報效率與即時決策體驗，本系統全新打造三欄沉浸式資產管理終端：
+1. **左側紀錄欄**：股票交易流水、銀行帳戶餘額、已實現損益三大類別一鍵切換，支援即時模糊搜尋、快速新增與排序。
+2. **中間填報欄**：內建常用股票代號與帳戶清單自動補全、台美股手續費（低消 20 元）與證交稅動態試算、超賣即時紅字預警。
+3. **右側儀表板**：編輯當下**毫秒級即時反應**，由前端純 JavaScript FIFO 運算引擎即時計算庫存成本、總資產淨值 KPI、資產分佈圓餅圖與月度交易量柱狀圖。
+4. **資料核心**：採用單一結構化 `assets_data.json`，LocalStorage 300ms 自動防抖存檔，並提供符合 Windows Excel 規範之 UTF-8 with BOM CSV 雙向匯出入。
 
 ---
 

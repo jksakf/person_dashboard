@@ -1,4 +1,4 @@
-// Core Data Management
+﻿// Core Data Management
 App.Data = {
     // App Data Store
     store: {
@@ -18,21 +18,39 @@ App.Data = {
         }
     },
 
-    // Load from LocalStorage
-    load: function () {
+    // Load from IndexedDB or LocalStorage
+    load: async function () {
         try {
-            const json = localStorage.getItem(App.Config.StorageKey);
-            if (json) {
-                const savedData = JSON.parse(json);
+            let savedData = null;
 
+            // 1. Try loading legacy_sync_data from IndexedDB
+            if (window.appStorage) {
+                try {
+                    savedData = await window.appStorage.get('legacy_sync_data');
+                    if (savedData) {
+                        console.log('Sync from IndexedDB success');
+                    }
+                } catch (e) {
+                    console.warn('Load IndexedDB legacy_sync_data failed:', e);
+                }
+            }
+
+            // 2. Fallback to LocalStorage
+            if (!savedData) {
+                const json = localStorage.getItem(App.Config.StorageKey);
+                if (json) {
+                    savedData = JSON.parse(json);
+                    console.log('Load from LocalStorage success');
+                }
+            }
+
+            if (savedData) {
                 if (savedData.bankAssets) this.store.bankAssets = savedData.bankAssets;
                 if (savedData.stockHoldings) this.store.stockHoldings = savedData.stockHoldings;
                 if (savedData.realizedPnL) this.store.realizedPnL = savedData.realizedPnL;
                 if (savedData.transactions) this.store.transactions = savedData.transactions;
 
-                console.log('✅ Data loaded from LocalStorage', this.store);
-
-                // Trigger Renders via Main Logic (will be handled by Main init)
+                console.log('Data loaded successfully', this.store);
                 this.triggerGlobalRender();
             }
         } catch (e) {

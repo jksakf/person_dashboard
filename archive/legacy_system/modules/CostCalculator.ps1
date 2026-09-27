@@ -28,8 +28,15 @@ function Get-TransactionData {
     # Import CSV
     $data = Import-Csv -Path $csvPath -Encoding Unicode | Where-Object { $_.'日期' -le $TargetDate }
     
-    # Sort by Date ASC (Important for FIFO/Avg Cost)
-    $data = $data | Sort-Object '日期'
+    # 為每筆交易加上原始 index 以確保穩定排序
+    $index = 0
+    foreach ($item in $data) {
+        $item | Add-Member -MemberType NoteProperty -Name 'OriginalIndex' -Value $index -Force
+        $index++
+    }
+    
+    # 先以日期排序，日期相同時則依照原始 CSV 順序排序，確保當沖交易相對順序不被打亂
+    $data = $data | Sort-Object '日期', 'OriginalIndex'
     return $data
 }
 
@@ -162,8 +169,8 @@ function Get-PortfolioStatus {
             # 為了簡化 PnL 累積，我們先只算 "紀錄幣別" 的損益，詳盡報表由 Get-PnLReport 負責
             # 但這裡的 RealizedPnL 只是個概數
             $pnl = 0
-            if ($currency -eq "TWD") { $pnl = $amount - $cogsTWD }
-            else { $pnl = $amount - $cogsOrig }
+            if ($currency -eq "TWD") { $pnl = $amountTWD - $cogsTWD }
+            else { $pnl = $amountOrig - $cogsOrig }
             
             $p.Quantity -= $qty
             $p.TotalCostOrig -= $cogsOrig
@@ -297,17 +304,8 @@ function Get-PnLReport {
             $cogsOrig = $totalCogsOrig
             $cogsTWD = $totalCogsTWD
             
-            $pnlOrig = 0
-            $pnlTWD = 0
-            
-            if ($currency -eq "TWD") {
-                $pnlOrig = $amount - $cogsOrig
-                $pnlTWD = $amount - $cogsTWD # TWD case: same
-            }
-            else {
-                $pnlOrig = $amountOrig - $cogsOrig
-                $pnlTWD = $amountTWD - $cogsTWD
-            }
+            $pnlOrig = $amountOrig - $cogsOrig
+            $pnlTWD = $amountTWD - $cogsTWD
             
             if ($TargetYear -eq "ALL" -or $date.StartsWith($TargetYear)) {
                 
@@ -337,3 +335,6 @@ function Get-PnLReport {
     
     return $pnlRecords
 }
+
+
+

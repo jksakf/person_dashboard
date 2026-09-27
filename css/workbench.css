@@ -1,0 +1,1013 @@
+:root {
+    /* 淺色主題 (Light Theme) */
+    --bg-color: #f1f5f9;
+    --text-color: #0f172a;
+    --text-muted: #64748b;
+    --card-bg: #ffffff;
+    --card-border: #e2e8f0;
+    --card-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --primary-light: #eff6ff;
+    --primary-border: #bfdbfe;
+    --accent: #0ea5e9;
+    --success: #10b981;
+    --success-light: #ecfdf5;
+    --warning: #f59e0b;
+    --warning-light: #fffbeb;
+    --danger: #ef4444;
+    --danger-light: #fef2f2;
+    --sidebar-bg: #ffffff;
+    --input-bg: #f8fafc;
+    --input-border: #cbd5e1;
+    --input-focus: #3b82f6;
+    --preview-bg: #f8fafc;
+    --preview-card-bg: #ffffff;
+    --preview-border: #cbd5e1;
+    --tag-bg: #e2e8f0;
+    --badge-bg: #e0f2fe;
+    --badge-text: #0369a1;
+    --font-mono: 'Roboto Mono', 'Fira Code', Consolas, monospace;
+    --font-sans: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+}
+
+[data-theme="dark"] {
+    /* 深色主題 (Dark Theme) */
+    --bg-color: #0b1120;
+    --text-color: #f8fafc;
+    --text-muted: #94a3b8;
+    --card-bg: #1e293b;
+    --card-border: #334155;
+    --card-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    --primary: #38bdf8;
+    --primary-hover: #0284c7;
+    --primary-light: #082f49;
+    --primary-border: #0369a1;
+    --accent: #38bdf8;
+    --success: #34d399;
+    --success-light: #064e3b;
+    --warning: #fbbf24;
+    --warning-light: #451a03;
+    --danger: #f87171;
+    --danger-light: #450a0a;
+    --sidebar-bg: #0f172a;
+    --input-bg: #131d31;
+    --input-border: #334155;
+    --input-focus: #38bdf8;
+    --preview-bg: #0d1527;
+    --preview-card-bg: #1e293b;
+    --preview-border: #334155;
+    --tag-bg: #334155;
+    --badge-bg: #0c4a6e;
+    --badge-text: #7dd3fc;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 頂部導航列 */
+header.wb-header {
+    background-color: var(--sidebar-bg);
+    border-bottom: 1px solid var(--card-border);
+    padding: 0.65rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 40;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.wb-header-title-box {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.wb-header-badge {
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-sm);
+    letter-spacing: 0.5px;
+}
+
+.wb-header-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+}
+
+.wb-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.wb-kpi-summary-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: var(--input-bg);
+    border: 1px solid var(--card-border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+}
+
+.wb-kpi-val {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.wb-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--card-border);
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    transition: all 0.15s ease;
+}
+
+.wb-btn:hover {
+    background-color: var(--input-bg);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.wb-btn.active {
+    background-color: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+
+.wb-btn.primary {
+    background-color: var(--primary);
+    color: #ffffff;
+    border-color: var(--primary);
+}
+
+.wb-btn.primary:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+.wb-btn.success {
+    background-color: var(--success);
+    color: #ffffff;
+    border-color: var(--success);
+}
+
+.wb-btn.danger {
+    background-color: var(--danger);
+    color: #ffffff;
+    border-color: var(--danger);
+}
+
+.wb-btn.sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.78rem;
+}
+
+/* 主工作區雙欄寬螢幕佈局 */
+.wb-workspace {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 左側紀錄列表 (Sidebar) */
+.wb-sidebar {
+    width: 270px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--card-border);
+    background-color: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+}
+
+.wb-module-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--card-border);
+    background-color: var(--input-bg);
+    overflow-x: auto;
+}
+
+.wb-module-tab {
+    flex: 1;
+    padding: 0.7rem 0.25rem;
+    border: none;
+    background: none;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-align: center;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.wb-module-tab:hover {
+    color: var(--text-color);
+}
+
+.wb-module-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background-color: var(--sidebar-bg);
+}
+
+.wb-sidebar-toolbar {
+    padding: 0.65rem;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.wb-search-input {
+    width: 100%;
+    padding: 0.45rem 0.7rem;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-color);
+    font-size: 0.85rem;
+}
+
+.wb-search-input:focus {
+    outline: none;
+    border-color: var(--input-focus);
+}
+
+.wb-list-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.wb-record-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.wb-record-card {
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-sm);
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.wb-record-card:hover {
+    border-color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.wb-record-card.active {
+    border-color: var(--primary);
+    background-color: var(--primary-light);
+    border-left: 4px solid var(--primary);
+}
+
+.wb-record-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.wb-record-symbol {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.wb-record-date {
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+}
+
+.wb-record-body {
+    font-size: 0.82rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-color);
+}
+
+.wb-record-amount {
+    font-family: var(--font-mono);
+    font-weight: 700;
+}
+
+.wb-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+}
+
+.wb-tag.buy {
+    background-color: var(--danger-light);
+    color: var(--danger);
+}
+
+.wb-tag.sell {
+    background-color: var(--success-light);
+    color: var(--success);
+}
+
+.wb-tag.bank {
+    background-color: var(--badge-bg);
+    color: var(--badge-text);
+}
+
+/* 右側全螢幕主報表區 (Main Report Pane) */
+.wb-main-report-pane {
+    flex: 1;
+    min-width: 0; /* 關鍵：避免 Flexbox 被內容撐破產生滾動條 */
+    background-color: var(--preview-bg);
+    overflow-y: auto;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.wb-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.85rem;
+}
+
+.wb-kpi-card {
+    background-color: var(--preview-card-bg);
+    border: 1px solid var(--preview-border);
+    border-radius: var(--radius-md);
+    padding: 0.85rem 1rem;
+    box-shadow: var(--card-shadow);
+}
+
+.wb-kpi-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+}
+
+.wb-kpi-num {
+    font-family: var(--font-mono);
+    font-size: 1.45rem;
+    font-weight: 700;
+}
+
+.wb-kpi-sub {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+}
+
+/* 表格容器與滾動樣式 */
+.wb-table-wrapper {
+    background-color: var(--preview-card-bg);
+    border: 1px solid var(--preview-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+
+.wb-table-header-box {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wb-table-scroll-container {
+    max-height: 460px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.wb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+}
+
+.wb-table th {
+    background-color: var(--input-bg);
+    padding: 0.6rem 0.85rem;
+    text-align: left;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--card-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.wb-table td {
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--card-border);
+    color: var(--text-color);
+}
+
+.wb-table tr:hover td {
+    background-color: var(--primary-light);
+}
+
+.wb-table td.mono {
+    font-family: var(--font-mono);
+}
+
+.wb-table td.text-right,
+.wb-table th.text-right {
+    text-align: right;
+}
+
+/* FIFO 批次展開樣式 */
+.wb-inventory-row {
+    cursor: pointer;
+}
+
+.wb-inventory-row.expanded {
+    background-color: var(--primary-light);
+    border-left: 3px solid var(--primary);
+}
+
+.wb-expand-icon {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    margin-right: 0.35rem;
+    font-size: 0.75rem;
+}
+
+.wb-inventory-row.expanded .wb-expand-icon {
+    transform: rotate(90deg);
+}
+
+.wb-batch-subrow td {
+    padding: 0 !important;
+    background-color: var(--input-bg);
+    border-bottom: 2px solid var(--card-border);
+}
+
+.wb-batch-subcontainer {
+    padding: 0.75rem 1.25rem;
+    border-left: 3px solid var(--accent);
+    margin: 0.35rem 0;
+}
+
+.wb-batch-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.wb-batch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.wb-batch-table th {
+    background-color: rgba(0, 0, 0, 0.15);
+    padding: 0.35rem 0.6rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: left;
+}
+
+.wb-batch-table td {
+    padding: 0.4rem 0.6rem !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* 圖表網格 */
+.wb-chart-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.wb-chart-card {
+    background-color: var(--preview-card-bg);
+    border: 1px solid var(--preview-border);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+}
+
+.wb-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-color);
+}
+
+.wb-chart-container {
+    flex: 1;
+    position: relative;
+    min-height: 200px;
+}
+
+/* 右側滑出抽屜 (Slide-over Drawer) */
+.wb-drawer-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.wb-drawer-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.wb-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 460px;
+    max-width: 90vw;
+    height: 100vh;
+    background-color: var(--sidebar-bg);
+    border-left: 1px solid var(--card-border);
+    z-index: 110;
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.4);
+    transform: translateX(100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.wb-drawer.open {
+    transform: translateX(0);
+}
+
+.wb-drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--card-border);
+    background-color: var(--card-bg);
+}
+
+.wb-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* 表單元件 */
+.wb-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.wb-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.wb-form-group.col-full {
+    grid-column: span 2;
+}
+
+.wb-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.wb-input,
+.wb-select {
+    padding: 0.5rem 0.75rem;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: var(--radius-sm);
+    color: var(--text-color);
+    font-size: 0.85rem;
+    font-family: inherit;
+}
+
+.wb-input.mono {
+    font-family: var(--font-mono);
+}
+
+.wb-input:focus,
+.wb-select:focus {
+    outline: none;
+    border-color: var(--input-focus);
+}
+
+.wb-calc-badge {
+    background-color: var(--input-bg);
+    border: 1px dashed var(--input-border);
+    padding: 0.6rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wb-alert-box {
+    padding: 0.6rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.wb-alert-box.danger {
+    background-color: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+}
+
+.wb-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+/* Toast 通知 */
+.wb-toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 9999;
+}
+
+.wb-toast {
+    padding: 0.65rem 1.15rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    animation: wbSlideIn 0.2s ease-out;
+}
+
+.wb-toast.success { background-color: var(--success); color: #ffffff; }
+.wb-toast.danger { background-color: var(--danger); color: #ffffff; }
+.wb-toast.info { background-color: var(--primary); color: #ffffff; }
+
+@keyframes wbSlideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* ===================================================
+   v1.3.0: 頂部現代分頁導覽與 5 大全景獨立視圖樣式
+   =================================================== */
+
+.wb-header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex: 1;
+}
+
+/* 頂部導航頁籤 (Nav Pill Tabs) */
+.wb-nav-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background-color: var(--input-bg);
+    padding: 0.25rem 0.35rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--card-border);
+}
+
+.wb-nav-tab {
+    background: none;
+    border: none;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.wb-nav-tab:hover {
+    color: var(--text-color);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.wb-nav-tab.active {
+    background-color: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.35);
+}
+
+/* 全寬度主視圖容器 */
+.wb-view-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 2rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.wb-view {
+    display: none;
+    flex-direction: column;
+    gap: 1.25rem;
+    width: 100%;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+.wb-view.active {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 視圖專屬工具列 (Toolbar) */
+.wb-view-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--card-bg);
+    border: 1px solid var(--card-border);
+    padding: 0.65rem 1rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--card-shadow);
+}
+
+.wb-toolbar-left,
+.wb-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+/* ========================================================
+   常用清單字典管理彈窗 (List Manager Modal)
+   ======================================================== */
+.wb-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.wb-modal-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.wb-modal-pane {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    width: 90%;
+    max-width: 680px;
+    max-height: 85vh;
+    background-color: var(--preview-card-bg);
+    border: 1px solid var(--preview-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+    z-index: 210;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.wb-modal-pane.active {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.wb-modal-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--card-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wb-modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--card-border);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.wb-modal-tab {
+    flex: 1;
+    padding: 0.75rem;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+}
+
+.wb-modal-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: rgba(56, 189, 248, 0.06);
+}
+
+.wb-modal-body {
+    padding: 1.2rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.wb-dict-add-bar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+    padding: 0.6rem;
+}
+
+.wb-dict-table-container {
+    max-height: 280px;
+    overflow-y: auto;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-md);
+}
+
+.wb-account-tag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.6rem;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 0.2rem;
+}
+
+.wb-account-tag-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(56, 189, 248, 0.08);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.wb-account-tag-item .del-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0 0.2rem;
+    transition: color 0.15s;
+}
+
+.wb-account-tag-item .del-btn:hover {
+    color: var(--danger);
+}
+
+.wb-modal-footer {
+    padding: 0.9rem 1.25rem;
+    border-top: 1px solid var(--card-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* 時序膠囊切換按鈕群 (Segmented Pill Buttons) */
+.wb-pill-group {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 9999px;
+    padding: 2px;
+    gap: 2px;
+}
+
+[data-theme="light"] .wb-pill-group {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+.wb-pill-btn {
+    background: transparent;
+    border: none;
+    border-radius: 9999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.wb-pill-btn:hover {
+    color: var(--text-color);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.wb-pill-btn.active {
+    background: var(--primary);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+}
+
