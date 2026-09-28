@@ -127,7 +127,11 @@ class WorkbenchEngine {
                     costPerShare: costPerShareOriginal,
                     costPerShareTwd: costPerShareTwd,
                     originalShares: shares,
-                    fee: fee
+                    fee: fee,
+                    totalCostOriginal: totalCostOriginal,
+                    remainingCostOriginal: totalCostOriginal,
+                    totalCostTwd: totalCostTwd,
+                    remainingCostTwd: totalCostTwd
                 });
             } else if (tx.action === '賣出') {
                 if (shares <= 0) continue;
@@ -144,15 +148,40 @@ class WorkbenchEngine {
                     const currentLot = group.lots[0];
                     const sharesFromThisLot = Math.min(currentLot.shares, remainingToSell);
 
-                    costOfSoldSharesOriginal += sharesFromThisLot * currentLot.costPerShare;
-                    costOfSoldSharesTwd += sharesFromThisLot * (currentLot.costPerShareTwd || (currentLot.costPerShare * (currentLot.exchangeRate || 1.0)));
+                    let lotCostOriginal = 0;
+                    let lotCostTwd = 0;
 
-                    currentLot.shares -= sharesFromThisLot;
-                    remainingToSell -= sharesFromThisLot;
+                    if (sharesFromThisLot >= currentLot.shares) {
+                        // 1. 全數清空此 lot：完全繼承剩餘全部成本，徹底杜絕浮點數除法殘留誤差
+                        lotCostOriginal = currentLot.remainingCostOriginal != null ? currentLot.remainingCostOriginal : (sharesFromThisLot * currentLot.costPerShare);
+                        lotCostTwd = currentLot.remainingCostTwd != null ? currentLot.remainingCostTwd : Math.round(sharesFromThisLot * currentLot.costPerShareTwd);
 
-                    if (currentLot.shares <= 0) {
+                        currentLot.shares = 0;
+                        currentLot.remainingCostOriginal = 0;
+                        currentLot.remainingCostTwd = 0;
                         group.lots.shift(); // 移出隊列
+                    } else {
+                        // 2. 部分賣出此 lot：依券商對帳單標準分攤 (未滿 1 元手續費無條件捨去，由後續末筆繼承)
+                        const partialRawOriginal = Math.round(sharesFromThisLot * currentLot.price * 100) / 100;
+                        const partialFeeOriginal = currentLot.originalShares > 0
+                            ? Math.floor((currentLot.fee || 0) * (sharesFromThisLot / currentLot.originalShares) * 100) / 100
+                            : 0;
+                        lotCostOriginal = Math.round((partialRawOriginal + partialFeeOriginal) * 100) / 100;
+
+                        const partialRawTwd = sharesFromThisLot * currentLot.price * (currentLot.exchangeRate || 1.0);
+                        const partialFeeTwd = currentLot.originalShares > 0
+                            ? Math.floor((currentLot.fee || 0) * (sharesFromThisLot / currentLot.originalShares) * (currentLot.exchangeRate || 1.0))
+                            : 0;
+                        lotCostTwd = Math.round(partialRawTwd + partialFeeTwd);
+
+                        currentLot.shares -= sharesFromThisLot;
+                        if (currentLot.remainingCostOriginal != null) currentLot.remainingCostOriginal -= lotCostOriginal;
+                        if (currentLot.remainingCostTwd != null) currentLot.remainingCostTwd -= lotCostTwd;
                     }
+
+                    costOfSoldSharesOriginal += lotCostOriginal;
+                    costOfSoldSharesTwd += lotCostTwd;
+                    remainingToSell -= sharesFromThisLot;
                 }
 
                 // 檢查是否超賣
@@ -212,8 +241,8 @@ class WorkbenchEngine {
                 const exchangeRate = parseFloat(lastLot.exchangeRate) || 1.0;
 
                 // 原幣成本與折合台幣成本
-                const totalCostOriginal = grp.lots.reduce((acc, lot) => acc + (lot.shares * lot.costPerShare), 0);
-                const totalCostTwd = grp.lots.reduce((acc, lot) => acc + (lot.shares * (lot.costPerShareTwd || (lot.costPerShare * (lot.exchangeRate || 1.0)))), 0);
+                const totalCostOriginal = grp.lots.reduce((acc, lot) => acc + (lot.remainingCostOriginal != null ? lot.remainingCostOriginal : (lot.shares * lot.costPerShare)), 0);
+                const totalCostTwd = grp.lots.reduce((acc, lot) => acc + (lot.remainingCostTwd != null ? lot.remainingCostTwd : (lot.shares * (lot.costPerShareTwd || (lot.costPerShare * (lot.exchangeRate || 1.0))))), 0);
                 const avgCostOriginal = remainingShares > 0 ? (totalCostOriginal / remainingShares) : 0;
                 const avgCostTwd = remainingShares > 0 ? (totalCostTwd / remainingShares) : 0;
 

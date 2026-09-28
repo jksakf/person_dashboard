@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 個人資產一體化工作台 - 主應用控制器 (WorkbenchApp v1.3.0)
  * 職責：5 大獨立全寬度視圖切換、Datalist 智慧連動、FIFO 金融計算、滑出抽屜與傳統儀表板同步
  * 編碼：UTF-8 with BOM
@@ -26,6 +26,7 @@ class WorkbenchApp {
         this.currentView = 'overview'; // 'overview' | 'bank' | 'stock' | 'history' | 'pnl'
         this.historySearch = '';
         this.historyFilterAction = 'ALL';
+        this.historyMarketFilter = 'ALL';
         this.pnlSearch = '';
         this.selectedBankMonth = '';
         this.expandedHoldings = new Set();
@@ -40,6 +41,7 @@ class WorkbenchApp {
         // 月度結算總表展開狀態
         this.isLedgerExpanded = false;
         this.trendTimeRange = 'ALL'; // '6M' | '1Y' | '3Y' | 'ALL'
+        this.pnlPieType = 'profit';  // 'profit' | 'loss' | 'comparison'
 
         // 抽屜編輯狀態
         this.isDrawerOpen = false;
@@ -57,6 +59,7 @@ class WorkbenchApp {
             trend: null,
             doughnut: null,
             bar: null,
+            bankShare: null,
             stockWeight: null,
             realizedWeight: null
         };
@@ -104,17 +107,20 @@ class WorkbenchApp {
             await this.storage.migrateFromLocalStorage('assets_data');
             const cached = await this.storage.get('assets_data');
 
-            // 優先獲取伺服器端 assets_data.json 最新狀態 (加入防快取參數)
+            // 優先獲取伺服器端 assets_data.json 最新狀態 (加入防快取參數與 UTF-8 BOM 防呆過濾)
             let serverData = null;
             try {
                 const res = await fetch('assets_data.json?_t=' + Date.now());
                 if (res.ok) {
-                    serverData = await res.json();
+                    const text = await res.text();
+                    serverData = JSON.parse(text.replace(/^\uFEFF/, ''));
                 }
-            } catch (err) { }
+            } catch (err) {
+                console.warn('載入 assets_data.json 失敗:', err);
+            }
 
-            if (serverData) {
-                if (cached && (cached.transactions || cached.bankAssets)) {
+            if (serverData && ((serverData.transactions && serverData.transactions.length > 0) || (serverData.bankAssets && serverData.bankAssets.length > 0))) {
+                if (cached && ((cached.transactions && cached.transactions.length > 0) || (cached.bankAssets && cached.bankAssets.length > 0))) {
                     this.data = cached;
                     // 自動同步伺服器端已校準完成之最新 monthlySnapshots 快照
                     if (serverData.monthlySnapshots) {
@@ -123,12 +129,12 @@ class WorkbenchApp {
                     if (serverData.meta) {
                         this.data.meta = { ...(this.data.meta || {}), ...serverData.meta };
                     }
-                    await this.saveData();
                 } else {
+                    // 若本地快取無資料或為空陣列，則以伺服器端完整資料為主
                     this.data = serverData;
                     await this.saveData();
                 }
-            } else if (cached && (cached.transactions || cached.bankAssets)) {
+            } else if (cached && ((cached.transactions && cached.transactions.length > 0) || (cached.bankAssets && cached.bankAssets.length > 0))) {
                 this.data = cached;
             }
         } catch (e) {
@@ -139,6 +145,9 @@ class WorkbenchApp {
         this.data.monthlySnapshots = this.data.monthlySnapshots || {};
 
         // 清洗 meta.accountList 雜質防呆 (避免舊快取殘留 [object Object])
+        if (Array.isArray(this.data.realizedPnL)) {
+            this.data.realizedPnL = this.data.realizedPnL.filter(p => p.id !== 'manual_pnl_1');
+        }
         if (this.data.meta && Array.isArray(this.data.meta.accountList)) {
             this.data.meta.accountList = this.data.meta.accountList
                 .map(a => (typeof a === 'string' ? a : (a && (a.value || a.name || ''))))
@@ -573,7 +582,33 @@ class WorkbenchApp {
             const bankPct = totalAsset > 0 ? ((bankTotal / totalAsset) * 100).toFixed(1) : '0.0';
             const stockPct = totalAsset > 0 ? ((stockTotal / totalAsset) * 100).toFixed(1) : '0.0';
 
-            const doughnutPlugins = typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : [];
+            // 圓心自訂插件：在甜甜圈圖中心繪製總資產淨值，消除視覺中空感
+            const assetCenterPlugin = {
+                id: 'assetCenterText',
+                beforeDraw: (chart) => {
+                    const { width, height, ctx } = chart;
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    const centerX = width / 2;
+                    const chartArea = chart.chartArea;
+                    const centerY = chartArea ? (chartArea.top + chartArea.bottom) / 2 : height / 2;
+
+                    ctx.font = '500 11px "Noto Sans TC", sans-serif';
+                    ctx.fillStyle = isDark ? '#94a3b8' : '#64748b';
+                    ctx.fillText('總資產淨值', centerX, centerY - 12);
+
+                    ctx.font = '700 17px "Roboto Mono", monospace';
+                    ctx.fillStyle = isDark ? '#f8fafc' : '#0f172a';
+                    ctx.fillText(`$${Math.round(totalAsset).toLocaleString()}`, centerX, centerY + 11);
+                    ctx.restore();
+                }
+            };
+
+            const doughnutPlugins = [assetCenterPlugin];
+            if (typeof ChartDataLabels !== 'undefined') {
+                doughnutPlugins.push(ChartDataLabels);
+            }
 
             this.charts.doughnut = new Chart(pieCtx, {
                 type: 'doughnut',
@@ -590,6 +625,7 @@ class WorkbenchApp {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '65%',
                     plugins: {
                         legend: {
                             position: 'bottom',
@@ -630,42 +666,258 @@ class WorkbenchApp {
             });
         }
 
-        // 3. 近期交易成交量柱狀圖
-        const barCtx = document.getElementById('tradeBarChart');
-        if (barCtx) {
-            if (this.charts.bar) this.charts.bar.destroy();
+        // 3. 渲染右側雙層戰情卡 (方案 1 財務防守線 + 方案 3 今年度 YTD 戰果)
+        this.renderTacticalCards();
+    }
 
-            const monthlyVol = {};
-            (this.data.transactions || []).forEach(tx => {
-                const m = (tx.date || '').slice(0, 7);
-                if (!m) return;
-                monthlyVol[m] = (monthlyVol[m] || 0) + (parseFloat(tx.netAmountTwd) || parseFloat(tx.totalAmount) || 0);
-            });
+    getAvailableOverviewYears(ledger = []) {
+        const years = new Set();
+        (ledger || []).forEach(l => {
+            const y = (l.month || '').slice(0, 4);
+            if (y) years.add(y);
+        });
+        const pnlList = this.getRealizedPnLList();
+        pnlList.forEach(p => {
+            const y = (p.closeDate || p.date || '').slice(0, 4);
+            if (y) years.add(y);
+        });
+        if (years.size === 0) {
+            years.add(new Date().getFullYear().toString());
+        }
+        return Array.from(years).sort((a, b) => b.localeCompare(a));
+    }
 
-            const months = Object.keys(monthlyVol).sort().slice(-8);
-            const vols = months.map(m => Math.round(monthlyVol[m]));
+    changeOverviewYear(year) {
+        this.selectedOverviewYear = year;
+        this.renderTacticalCards();
+    }
 
-            this.charts.bar = new Chart(barCtx, {
-                type: 'bar',
-                data: {
-                    labels: months,
-                    datasets: [{
-                        label: '交易金額 (TWD)',
-                        data: vols,
-                        backgroundColor: 'rgba(56, 189, 248, 0.7)',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { ticks: { color: textColor }, grid: { color: gridColor } },
-                        y: { ticks: { color: textColor }, grid: { color: gridColor } }
-                    },
-                    plugins: { legend: { display: false } }
+    renderTacticalCards() {
+        const safetyBadge = document.getElementById('overviewSafetyBadge');
+        const netCashVal = document.getElementById('overviewNetCashVal');
+        const creditDebtVal = document.getElementById('overviewCreditDebtVal');
+        const debtRatioVal = document.getElementById('overviewDebtRatioVal');
+
+        const ytdGrowthBadge = document.getElementById('overviewYtdGrowthBadge');
+        const ytdNetGrowth = document.getElementById('overviewYtdNetGrowth');
+        const ytdRealizedPnL = document.getElementById('overviewYtdRealizedPnL');
+        const ytdWinRate = document.getElementById('overviewYtdWinRate');
+        const ytdNetGrowthLabel = document.getElementById('overviewYtdNetGrowthLabel');
+        const ytdRealizedLabel = document.getElementById('overviewYtdRealizedLabel');
+        const ytdWinRateLabel = document.getElementById('overviewYtdWinRateLabel');
+
+        if (!netCashVal) return;
+
+        // 1. 財務安全防守線計算 (取最新一期銀行快照，排除股票虛擬帳戶)
+        const latestItems = this.getLatestBankAssets().filter(b => {
+            const name = b.bankName || '';
+            return !(name.includes('股票') || name.includes('ETF'));
+        });
+        let depositTotal = 0;
+        let debtTotal = 0;
+
+        latestItems.forEach(b => {
+            const amt = parseFloat(b.twdAmount) || parseFloat(b.originalAmount) || 0;
+            if (amt >= 0) {
+                depositTotal += amt;
+            } else {
+                debtTotal += amt;
+            }
+        });
+
+        const netCash = depositTotal + debtTotal;
+        const absDebt = Math.abs(debtTotal);
+        const debtRatio = depositTotal > 0 ? ((absDebt / depositTotal) * 100).toFixed(1) : '0.0';
+
+        netCashVal.textContent = `$${Math.round(netCash).toLocaleString()}`;
+        creditDebtVal.textContent = absDebt > 0 ? `-$${Math.round(absDebt).toLocaleString()}` : '$0';
+        debtRatioVal.textContent = `${debtRatio}%`;
+
+        if (safetyBadge) {
+            const ratioNum = parseFloat(debtRatio);
+            if (ratioNum < 15) {
+                safetyBadge.className = 'wb-tag success';
+                safetyBadge.textContent = '🟢 體質優良';
+            } else if (ratioNum < 30) {
+                safetyBadge.className = 'wb-tag warning';
+                safetyBadge.textContent = '🟡 正常安全';
+            } else {
+                safetyBadge.className = 'wb-tag danger';
+                safetyBadge.textContent = '🔴 負債偏高';
+            }
+        }
+
+        // 財務安全防守線視覺進度條與提示 (水庫防守覆蓋模型)
+        const cashRatioText = document.getElementById('overviewCashRatioText');
+        const debtRatioText = document.getElementById('overviewDebtRatioText');
+        const cashRatioLabel = document.getElementById('overviewCashRatioLabel');
+        const debtRatioLabel = document.getElementById('overviewDebtRatioLabel');
+        const cashBar = document.getElementById('overviewCashBar');
+        const debtBar = document.getElementById('overviewDebtBar');
+        const safetyTip = document.getElementById('overviewSafetyTip');
+
+        let cashShare = 0;
+        let debtShare = 0;
+
+        if (absDebt === 0) {
+            cashShare = 100;
+            debtShare = 0;
+            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質防守水位 <strong id="overviewCashRatioText">100.0%</strong>`;
+            if (debtRatioLabel) debtRatioLabel.innerHTML = `💳 負債侵蝕率 <strong id="overviewDebtRatioText">0.0%</strong>`;
+        } else if (netCash > 0 && depositTotal > 0) {
+            // 正常流動性充足：負債侵蝕部分 vs 實質安全厚度
+            debtShare = Math.min(100, (absDebt / depositTotal) * 100);
+            cashShare = Math.max(0, 100 - debtShare);
+            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質防守水位 <strong id="overviewCashRatioText">${cashShare.toFixed(1)}%</strong>`;
+            if (debtRatioLabel) debtRatioLabel.innerHTML = `💳 負債侵蝕率 <strong id="overviewDebtRatioText">${debtShare.toFixed(1)}%</strong>`;
+        } else {
+            // 負債超越現金儲備 (赤字)：防守線遭擊穿，水位歸零！
+            cashShare = 0;
+            debtShare = 100;
+            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質防守水位 <strong id="overviewCashRatioText">0.0% (防線遭擊穿)</strong>`;
+            if (debtRatioLabel) debtRatioLabel.innerHTML = `🚨 負債全面覆蓋 <strong id="overviewDebtRatioText">100.0% (超額負債)</strong>`;
+        }
+
+        if (cashBar) cashBar.style.width = `${cashShare.toFixed(1)}%`;
+        if (debtBar) debtBar.style.width = `${debtShare.toFixed(1)}%`;
+
+        if (safetyTip) {
+            const netCashNum = Math.round(netCash);
+            const depositNum = Math.round(depositTotal);
+            if (absDebt === 0) {
+                safetyTip.textContent = `💡 當前無即期信用卡負債，流動性儲備 $${depositNum.toLocaleString()} 極為充沛無虞。`;
+            } else {
+                const coverMultiple = (depositTotal / absDebt).toFixed(1);
+                const ratioNum = parseFloat(debtRatio);
+                if (ratioNum < 15) {
+                    safetyTip.textContent = `💡 總現金儲備 $${depositNum.toLocaleString()} 可覆蓋負債約 ${coverMultiple} 倍（實質淨流動性 $${netCashNum.toLocaleString()}），防守縱深極佳，無短期償債壓力。`;
+                } else if (ratioNum < 30) {
+                    safetyTip.textContent = `💡 現金儲備可覆蓋負債約 ${coverMultiple} 倍（實質淨流動性 $${netCashNum.toLocaleString()}），防守體質正常，請留意當月信用卡繳款日程。`;
+                } else if (ratioNum < 50) {
+                    safetyTip.textContent = `💡 即期負債比率偏高 (${debtRatio}%)，備用金覆蓋僅剩 ${coverMultiple} 倍（實質淨流動性 $${netCashNum.toLocaleString()}），建議維持適度流動資金以防突發支出。`;
+                } else if (netCashNum >= 0) {
+                    safetyTip.textContent = `⚠️ 警戒：即期負債比率已達 ${debtRatio}%（覆蓋倍數 ${coverMultiple} 倍），建議優先清償信用卡款以避免流動性緊縮。`;
+                } else {
+                    safetyTip.textContent = `⚠️ 警戒：即期負債已大幅超出流動儲備（實質赤字 -$${Math.abs(netCashNum).toLocaleString()}，負債比 ${debtRatio}%），防守線遭擊穿，請優先籌措資金償還！`;
                 }
-            });
+            }
+        }
+
+        // 2. 今年度 YTD 戰果計算 (智慧動態錨定 ＋ 支援跨年份切換)
+        const { ledger } = this.engine.generateMonthlySettlementLedger(
+            this.data.bankAssets || [],
+            this.data.transactions || [],
+            this.data.monthlySnapshots || {},
+            this.data.latestPrices || {}
+        );
+
+        const availableYears = this.getAvailableOverviewYears(ledger);
+        if (!this.selectedOverviewYear || !availableYears.includes(this.selectedOverviewYear)) {
+            this.selectedOverviewYear = availableYears[0];
+        }
+        const activeYear = this.selectedOverviewYear;
+
+        const yearSelect = document.getElementById('overviewYearSelect');
+        if (yearSelect) {
+            yearSelect.innerHTML = availableYears.map(y => `<option value="${y}" ${y === activeYear ? 'selected' : ''}>${y} 年度</option>`).join('');
+        }
+
+        if (ytdNetGrowthLabel) ytdNetGrowthLabel.textContent = `${activeYear} 淨資產增長`;
+        if (ytdRealizedLabel) ytdRealizedLabel.textContent = `${activeYear} 已實現獲利`;
+        if (ytdWinRateLabel) ytdWinRateLabel.textContent = `${activeYear} 平倉戰績`;
+
+        // 找出該年度的所有結算紀錄
+        const yearRecords = ledger.filter(l => (l.month || '').startsWith(activeYear));
+        let ytdGrowthAmt = 0;
+        let ytdGrowthRate = '0.0';
+
+        if (yearRecords.length > 0) {
+            const startRecord = yearRecords[0];
+            const latestRecord = yearRecords[yearRecords.length - 1];
+            if (yearRecords.length === 1) {
+                const prevRecords = ledger.filter(l => l.month < activeYear);
+                const prevRecord = prevRecords.length > 0 ? prevRecords[prevRecords.length - 1] : null;
+                const baseNetWorth = prevRecord ? prevRecord.totalNetWorth : startRecord.totalNetWorth;
+                ytdGrowthAmt = latestRecord.totalNetWorth - baseNetWorth;
+                ytdGrowthRate = baseNetWorth > 0 ? ((ytdGrowthAmt / baseNetWorth) * 100).toFixed(1) : '0.0';
+            } else {
+                const baseNetWorth = startRecord.totalNetWorth;
+                ytdGrowthAmt = latestRecord.totalNetWorth - baseNetWorth;
+                ytdGrowthRate = baseNetWorth > 0 ? ((ytdGrowthAmt / baseNetWorth) * 100).toFixed(1) : '0.0';
+            }
+        }
+
+        const isYtdNetProfit = ytdGrowthAmt >= 0;
+        const ytdNetColor = isYtdNetProfit ? 'var(--danger)' : 'var(--success)';
+        const ytdSign = isYtdNetProfit ? '+' : '';
+
+        if (ytdNetGrowth) {
+            ytdNetGrowth.textContent = `${ytdSign}$${Math.round(ytdGrowthAmt).toLocaleString()}`;
+            ytdNetGrowth.style.color = ytdNetColor;
+        }
+        if (ytdGrowthBadge) {
+            ytdGrowthBadge.textContent = `${activeYear} ${ytdSign}${ytdGrowthRate}%`;
+            ytdGrowthBadge.style.color = ytdNetColor;
+        }
+
+        // 該年度已實現平倉獲利與勝率 (嚴格讀取 netProfit 金融指標)
+        const pnlList = this.getRealizedPnLList();
+        const yearPnLs = pnlList.filter(p => (p.closeDate || p.date || '').startsWith(activeYear));
+
+        let ytdRealizedSum = 0;
+        let wins = 0;
+        let losses = 0;
+
+        yearPnLs.forEach(p => {
+            const amt = parseFloat(p.netProfit) || 0;
+            ytdRealizedSum += amt;
+            if (amt > 0) wins++;
+            else if (amt < 0) losses++;
+        });
+
+        const totalTrades = wins + losses;
+        const winRate = totalTrades > 0 ? ((wins / totalTrades) * 100).toFixed(1) : '0.0';
+
+        const isRealizedProfit = ytdRealizedSum >= 0;
+        const realizedColor = isRealizedProfit ? 'var(--danger)' : 'var(--success)';
+        const realizedSign = isRealizedProfit ? '+' : '';
+
+        if (ytdRealizedPnL) {
+            ytdRealizedPnL.textContent = `${realizedSign}$${Math.round(ytdRealizedSum).toLocaleString()}`;
+            ytdRealizedPnL.style.color = realizedColor;
+        }
+
+        if (ytdWinRate) {
+            ytdWinRate.textContent = `${wins}勝 ${losses}負 (${winRate}%)`;
+        }
+
+        // 年度平倉戰果視覺進度條與提示
+        const winRatioText = document.getElementById('overviewWinRatioText');
+        const lossRatioText = document.getElementById('overviewLossRatioText');
+        const winBar = document.getElementById('overviewWinBar');
+        const lossBar = document.getElementById('overviewLossBar');
+        const ytdTip = document.getElementById('overviewYtdTip');
+
+        if (totalTrades > 0) {
+            const winPct = ((wins / totalTrades) * 100).toFixed(1);
+            const lossPct = ((losses / totalTrades) * 100).toFixed(1);
+            if (winRatioText) winRatioText.textContent = `${winPct}% (${wins}筆)`;
+            if (lossRatioText) lossRatioText.textContent = `${lossPct}% (${losses}筆)`;
+            if (winBar) winBar.style.width = `${winPct}%`;
+            if (lossBar) lossBar.style.width = `${lossPct}%`;
+        } else {
+            if (winRatioText) winRatioText.textContent = '0.0% (0筆)';
+            if (lossRatioText) lossRatioText.textContent = '0.0% (0筆)';
+            if (winBar) winBar.style.width = '0%';
+            if (lossBar) lossBar.style.width = '0%';
+        }
+
+        if (ytdTip) {
+            if (totalTrades === 0) {
+                ytdTip.textContent = `💡 ${activeYear} 年度尚未有平倉出場紀錄，持股目前維持長線現值滾動。`;
+            } else {
+                ytdTip.textContent = `💡 ${activeYear} 年度已結清 ${totalTrades} 筆交易，累積已實現平倉損益 ${realizedSign}$${Math.round(ytdRealizedSum).toLocaleString()}。`;
+            }
         }
     }
 
@@ -719,6 +971,48 @@ class WorkbenchApp {
         this.showToast(`已複製最新餘額並建立 ${currentMonth} 新月度快照 (${copied} 筆)`, 'success');
     }
 
+    getAccountTypeMeta(accountType, isNegative = false) {
+        if (isNegative || accountType === '負債') {
+            return {
+                icon: '💳',
+                text: '信用卡/負債',
+                tagClass: 'danger',
+                style: 'background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3);'
+            };
+        }
+        switch (accountType) {
+            case '定存':
+                return {
+                    icon: '🏦',
+                    text: '定期存款',
+                    tagClass: 'warning',
+                    style: 'background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3);'
+                };
+            case '證券交割':
+                return {
+                    icon: '📈',
+                    text: '證券交割',
+                    tagClass: 'primary',
+                    style: 'background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);'
+                };
+            case '外幣':
+                return {
+                    icon: '🌐',
+                    text: '外幣帳戶',
+                    tagClass: 'info',
+                    style: 'background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3);'
+                };
+            case '活存':
+            default:
+                return {
+                    icon: '💰',
+                    text: '活存',
+                    tagClass: 'bank',
+                    style: 'background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3);'
+                };
+        }
+    }
+
     renderBankTable() {
         const monthSelect = document.getElementById('bankMonthSelect');
         const tbody = document.getElementById('bankTableBody');
@@ -731,8 +1025,43 @@ class WorkbenchApp {
         }
 
         const activeMonth = this.selectedBankMonth || (months.length > 0 ? months[0] : '');
-        const items = (this.data.bankAssets || []).filter(b => (b.date || '').startsWith(activeMonth));
-        const totalTwd = items.reduce((sum, b) => sum + (parseFloat(b.twdAmount) || parseFloat(b.originalAmount) || 0), 0);
+        // 排除舊系統中的股票/ETF 虛擬帳戶，避免與股票現值重複統計
+        const items = (this.data.bankAssets || [])
+            .filter(b => (b.date || '').startsWith(activeMonth))
+            .filter(b => {
+                const name = b.bankName || '';
+                return !(name.includes('股票') || name.includes('ETF'));
+            });
+
+        // 分類統計：存款 (正數) 與 負債/信用卡 (負數)
+        let depositTotal = 0, depositCount = 0;
+        let liabilityTotal = 0, liabilityCount = 0;
+
+        items.forEach(b => {
+            const twdAmt = parseFloat(b.twdAmount) || parseFloat(b.originalAmount) || 0;
+            if (twdAmt >= 0) {
+                depositTotal += twdAmt;
+                depositCount++;
+            } else {
+                liabilityTotal += twdAmt;
+                liabilityCount++;
+            }
+        });
+
+        const netLiquidCash = depositTotal + liabilityTotal;
+
+        // 更新頂部 3 大流動性 KPI 看板
+        const elDepTotal = document.getElementById('bankKpiDepositTotal');
+        const elDepCount = document.getElementById('bankKpiDepositCount');
+        const elLiabTotal = document.getElementById('bankKpiLiabilityTotal');
+        const elLiabCount = document.getElementById('bankKpiLiabilityCount');
+        const elNetCash = document.getElementById('bankKpiNetLiquidCash');
+
+        if (elDepTotal) elDepTotal.textContent = `$${Math.round(depositTotal).toLocaleString()}`;
+        if (elDepCount) elDepCount.textContent = `${depositCount} 個存款帳戶`;
+        if (elLiabTotal) elLiabTotal.textContent = liabilityTotal === 0 ? '$0' : `-$${Math.round(Math.abs(liabilityTotal)).toLocaleString()}`;
+        if (elLiabCount) elLiabCount.textContent = `${liabilityCount} 個負債/應繳帳戶`;
+        if (elNetCash) elNetCash.textContent = `$${Math.round(netLiquidCash).toLocaleString()}`;
 
         // 依折合台幣金額由大到小降冪排序 (大額主力帳戶置頂)
         const sortedItems = [...items].sort((a, b) => {
@@ -742,8 +1071,11 @@ class WorkbenchApp {
         });
 
         if (summaryStats) {
-            summaryStats.textContent = `當期總計 ${items.length} 帳戶 ｜ 折合台幣: $${Math.round(totalTwd).toLocaleString()}`;
+            summaryStats.textContent = `當期總計 ${items.length} 帳戶 ｜ 純存款: $${Math.round(depositTotal).toLocaleString()} ｜ 負債: $${Math.round(liabilityTotal).toLocaleString()} ｜ 淨流動資金: $${Math.round(netLiquidCash).toLocaleString()}`;
         }
+
+        // 渲染各大銀行存款佔比甜甜圈圖與排行清單
+        this.renderBankShareChart(sortedItems, depositTotal, liabilityTotal);
 
         if (sortedItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:2rem; color:var(--text-muted);">本月快照尚無帳戶資料</td></tr>`;
@@ -754,15 +1086,20 @@ class WorkbenchApp {
         sortedItems.forEach(item => {
             const originalAmt = parseFloat(item.originalAmount) || 0;
             const twdAmt = parseFloat(item.twdAmount) || 0;
+            const isNegative = twdAmt < 0;
+            const amtColor = isNegative ? 'var(--danger)' : '#38bdf8';
+            const meta = this.getAccountTypeMeta(item.accountType, isNegative);
+            const tagHtml = `<span class="wb-tag" style="${meta.style}">${meta.icon} ${meta.text}</span>`;
+
             html += `
             <tr class="wb-inventory-row" onclick="app.openBankDrawerForEdit('${item.id}')">
                 <td class="mono">${item.date || ''}</td>
                 <td><strong>${item.bankName || ''}</strong></td>
-                <td><span class="wb-tag bank">${item.accountType || '活存'}</span></td>
+                <td>${tagHtml}</td>
                 <td class="mono">${item.currency || 'TWD'}</td>
-                <td class="text-right mono">${originalAmt.toLocaleString()}</td>
+                <td class="text-right mono">${isNegative ? '-' : ''}${Math.abs(originalAmt).toLocaleString()}</td>
                 <td class="text-right mono">${item.exchangeRate || 1.0}</td>
-                <td class="text-right mono" style="font-weight:700; color:var(--primary);">$${Math.round(twdAmt).toLocaleString()}</td>
+                <td class="text-right mono" style="font-weight:700; color:${amtColor};">${isNegative ? '-' : ''}$${Math.round(Math.abs(twdAmt)).toLocaleString()}</td>
                 <td style="color:var(--text-muted); font-size:0.82rem;">${item.note || ''}</td>
                 <td style="text-align:center;">
                     <button class="wb-btn sm" onclick="event.stopPropagation(); app.openBankDrawerForEdit('${item.id}')">✏️ 編輯</button>
@@ -773,8 +1110,228 @@ class WorkbenchApp {
         tbody.innerHTML = html;
     }
 
+    renderBankShareChart(sortedItems = [], totalDeposit = 0, totalLiability = 0) {
+        const canvas = document.getElementById('bankShareChart');
+        const rankList = document.getElementById('bankRankList');
+        const badgeDeposit = document.getElementById('bankTotalDepositBadge');
+        const badgeCount = document.getElementById('bankAccountCountBadge');
+        if (!canvas) return;
+
+        if (badgeDeposit) {
+            badgeDeposit.textContent = `純存款: $${Math.round(totalDeposit).toLocaleString()}`;
+        }
+        if (badgeCount) {
+            badgeCount.textContent = `共 ${sortedItems.length} 個帳戶`;
+        }
+
+        // 正數純存款 (用於圓餅圖切片分析與主力排行)
+        const positiveItems = sortedItems.filter(item => (parseFloat(item.twdAmount) || 0) > 0);
+        // 負債帳戶 (信用卡)
+        const debtItems = sortedItems.filter(item => (parseFloat(item.twdAmount) || 0) < 0);
+        // 備用無餘額帳戶 ($0)
+        const zeroItems = sortedItems.filter(item => (parseFloat(item.twdAmount) || 0) === 0);
+
+        if (this.charts.bankShare) {
+            this.charts.bankShare.destroy();
+            this.charts.bankShare = null;
+        }
+
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#94a3b8' : '#64748b';
+
+        const palette = [
+            '#0ea5e9', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7',
+            '#d946ef', '#ec4899', '#f43f5e', '#10b981', '#14b8a6',
+            '#06b6d4', '#f59e0b', '#84cc16'
+        ];
+
+        const labels = positiveItems.map(item => {
+            const val = parseFloat(item.twdAmount) || 0;
+            const pct = totalDeposit > 0 ? ((val / totalDeposit) * 100).toFixed(1) : '0.0';
+            return `${item.bankName} (${pct}%)`;
+        });
+        const dataValues = positiveItems.map(item => Math.round(parseFloat(item.twdAmount) || 0));
+        const colors = positiveItems.map((_, i) => palette[i % palette.length]);
+
+        // 圓心自訂插件：在甜甜圈圖中心繪製純存款總計
+        const bankCenterPlugin = {
+            id: 'bankCenterText',
+            beforeDraw: (chart) => {
+                const { width, height, ctx } = chart;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const centerX = width / 2;
+                const chartArea = chart.chartArea;
+                const centerY = chartArea ? (chartArea.top + chartArea.bottom) / 2 : height / 2;
+
+                ctx.font = '500 11px "Noto Sans TC", sans-serif';
+                ctx.fillStyle = textColor;
+                ctx.fillText('純存款總額', centerX, centerY - 11);
+
+                ctx.font = '700 16px "Roboto Mono", monospace';
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillText(`$${Math.round(totalDeposit).toLocaleString()}`, centerX, centerY + 12);
+                ctx.restore();
+            }
+        };
+
+        const bankChartPlugins = [bankCenterPlugin];
+        if (typeof ChartDataLabels !== 'undefined') {
+            bankChartPlugins.push(ChartDataLabels);
+        }
+
+        const ctx = canvas.getContext('2d');
+        if (positiveItems.length > 0) {
+            this.charts.bankShare = new Chart(ctx, {
+                type: 'doughnut',
+                plugins: bankChartPlugins,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataValues,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: isDark ? '#1e293b' : '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: textColor,
+                                font: { family: "'Noto Sans TC', sans-serif", size: 11 },
+                                boxWidth: 10,
+                                padding: 8
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const val = context.raw || 0;
+                                    const pct = totalDeposit > 0 ? ((val / totalDeposit) * 100).toFixed(1) : 0;
+                                    const labelName = context.label ? context.label.split(' (')[0] : '';
+                                    return ` ${labelName}: $${val.toLocaleString()} (${pct}%)`;
+                                }
+                            }
+                        },
+                        datalabels: {
+                            display: (context) => {
+                                const val = context.dataset.data[context.dataIndex] || 0;
+                                const pct = totalDeposit > 0 ? (val / totalDeposit) * 100 : 0;
+                                return pct >= 6; // 大於等於 6% 才在切片上繪製標籤，避免重疊
+                            },
+                            color: '#ffffff',
+                            font: {
+                                weight: 'bold',
+                                size: 11,
+                                family: "'Roboto Mono', 'Noto Sans TC', sans-serif"
+                            },
+                            formatter: (val) => {
+                                const pct = totalDeposit > 0 ? ((val / totalDeposit) * 100).toFixed(1) : 0;
+                                return `${pct}%`;
+                            },
+                            textShadowBlur: 3,
+                            textShadowColor: 'rgba(0,0,0,0.7)'
+                        }
+                    }
+                }
+            });
+        }
+
+        // 渲染右側資金分佈排行清單 (主力存款、負債警戒、備用帳戶清晰分組)
+        if (rankList) {
+            if (sortedItems.length === 0) {
+                rankList.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted);">無帳戶資料</div>`;
+                return;
+            }
+
+            let rankHtml = '';
+
+            // 1. 主力正數存款排行 (依金額降冪置頂)
+            positiveItems.forEach((item, idx) => {
+                const amt = parseFloat(item.twdAmount) || 0;
+                const pct = totalDeposit > 0 ? ((amt / totalDeposit) * 100).toFixed(1) : '0.0';
+                const dotColor = palette[idx % palette.length];
+
+                rankHtml += `
+                <div style="background:rgba(255,255,255,0.02); padding:0.45rem 0.65rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                            <span class="mono" style="font-size:0.75rem; font-weight:700; color:var(--text-muted); width:16px;">#${idx + 1}</span>
+                            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${dotColor};"></span>
+                            <span style="font-weight:600; font-size:0.85rem;">${item.bankName}</span>
+                            <span class="wb-tag" style="${this.getAccountTypeMeta(item.accountType, false).style}; font-size:0.68rem; padding:0.1rem 0.35rem;">${this.getAccountTypeMeta(item.accountType, false).icon} ${this.getAccountTypeMeta(item.accountType, false).text}</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <span class="mono" style="font-weight:700; font-size:0.88rem; color:#38bdf8;">$${Math.round(amt).toLocaleString()}</span>
+                            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.3rem;">(${pct}%)</span>
+                        </div>
+                    </div>
+                    <div style="height:4px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden;">
+                        <div style="width:${pct}%; height:100%; background:${dotColor}; border-radius:2px;"></div>
+                    </div>
+                </div>`;
+            });
+
+            // 2. 信用卡應繳負債專屬警戒區 (若有負債帳戶)
+            if (debtItems.length > 0) {
+                const absTotalLiab = Math.abs(totalLiability) || 1;
+                rankHtml += `
+                <div style="margin-top:0.35rem; padding-top:0.4rem; border-top:1px dashed rgba(239,68,68,0.3);">
+                    <div style="font-size:0.75rem; font-weight:700; color:var(--danger); margin-bottom:0.3rem; display:flex; justify-content:space-between;">
+                        <span>💳 信用卡應繳與即期負債</span>
+                        <span class="mono">小計 -$${Math.round(absTotalLiab).toLocaleString()}</span>
+                    </div>`;
+
+                debtItems.forEach(item => {
+                    const amt = parseFloat(item.twdAmount) || 0;
+                    const absAmt = Math.abs(amt);
+                    const debtPct = ((absAmt / absTotalLiab) * 100).toFixed(1);
+
+                    rankHtml += `
+                    <div style="background:rgba(239,68,68,0.04); padding:0.4rem 0.65rem; border-radius:6px; border:1px solid rgba(239,68,68,0.15); margin-bottom:0.35rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.2rem;">
+                            <div style="display:flex; align-items:center; gap:0.4rem;">
+                                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--danger);"></span>
+                                <span style="font-weight:600; font-size:0.83rem;">${item.bankName}</span>
+                                <span class="wb-tag danger" style="font-size:0.65rem; padding:0.08rem 0.3rem;">負債</span>
+                            </div>
+                            <div style="text-align:right;">
+                                <span class="mono" style="font-weight:700; font-size:0.85rem; color:var(--danger);">-$${Math.round(absAmt).toLocaleString()}</span>
+                                <span style="font-size:0.73rem; color:var(--text-muted); margin-left:0.3rem;">(${debtPct}%)</span>
+                            </div>
+                        </div>
+                        <div style="height:3px; background:rgba(239,68,68,0.15); border-radius:2px; overflow:hidden;">
+                            <div style="width:${debtPct}%; height:100%; background:var(--danger); border-radius:2px;"></div>
+                        </div>
+                    </div>`;
+                });
+
+                rankHtml += `</div>`;
+            }
+
+            // 3. 備用零餘額帳戶 ($0)
+            if (zeroItems.length > 0) {
+                const zeroNames = zeroItems.map(z => z.bankName).join('、');
+                rankHtml += `
+                <div style="font-size:0.73rem; color:var(--text-muted); padding:0.25rem 0.4rem; background:rgba(255,255,255,0.01); border-radius:4px; border:1px solid rgba(255,255,255,0.03); margin-top:0.3rem;">
+                    ⚪ 備用無餘額帳戶 (${zeroItems.length} 個): ${zeroNames} ($0)
+                </div>`;
+            }
+
+            rankList.innerHTML = rankHtml;
+            rankList.scrollTop = 0; // 確保滾動條預設置頂，優先看到排名第 1 的主力存款！
+        }
+    }
+
     // ==========================================
-    // View 3: 股票庫存全表渲染
+    // View 3: 股票庫存全表渲染 (獨立雙直欄設計)
     // ==========================================
     renderHoldingsTable() {
         const tbody = document.getElementById('holdingsTableBody');
@@ -783,7 +1340,7 @@ class WorkbenchApp {
 
         const { holdings, fifoQueues } = this.engine.computeFifoHoldings(this.data.transactions || [], this.data.latestPrices || {});
 
-        // 依使用者所選欄位與方向排序 (預設市值降冪，支援未實現損益等由大到小排序)
+        // 依使用者所選欄位與方向排序 (預設市值降冪，支援未實現損益、投入總成本等由大到小排序)
         const sortKey = this.stockSortKey || 'marketValue';
         const sortOrder = this.stockSortOrder || 'desc';
 
@@ -796,19 +1353,39 @@ class WorkbenchApp {
         });
 
         // 即時更新表頭排序指示箭頭
+        const iconShares = document.getElementById('sortIconShares');
+        const iconTotalCost = document.getElementById('sortIconTotalCost');
         const iconMarketValue = document.getElementById('sortIconMarketValue');
         const iconUnrealizedPnL = document.getElementById('sortIconUnrealizedPnL');
-        const iconShares = document.getElementById('sortIconShares');
         const arrow = sortOrder === 'desc' ? '▼' : '▲';
+        if (iconShares) iconShares.textContent = sortKey === 'shares' ? arrow : '';
+        if (iconTotalCost) iconTotalCost.textContent = sortKey === 'totalCost' ? arrow : '';
         if (iconMarketValue) iconMarketValue.textContent = sortKey === 'marketValue' ? arrow : '';
         if (iconUnrealizedPnL) iconUnrealizedPnL.textContent = sortKey === 'unrealizedPnL' ? arrow : '';
-        if (iconShares) iconShares.textContent = sortKey === 'shares' ? arrow : '';
 
         const totalMarketVal = sortedHoldings.reduce((sum, h) => sum + h.marketValue, 0);
         const totalCost = sortedHoldings.reduce((sum, h) => sum + h.totalCost, 0);
         const totalPnL = totalMarketVal - totalCost;
         const totalRate = totalCost > 0 ? ((totalPnL / totalCost) * 100).toFixed(2) : 0;
         const pnlSign = totalPnL >= 0 ? '+' : '';
+        const pnlColor = totalPnL >= 0 ? 'var(--danger)' : 'var(--success)'; // 台灣紅賺綠賠
+
+        // 更新頂部 3 大股票核心 KPI 看板
+        const elStockMarketVal = document.getElementById('stockKpiMarketValue');
+        const elStockTotalCost = document.getElementById('stockKpiTotalCost');
+        const elStockUnrealizedPnL = document.getElementById('stockKpiUnrealizedPnL');
+        const elStockUnrealizedRate = document.getElementById('stockKpiUnrealizedRate');
+
+        if (elStockMarketVal) elStockMarketVal.textContent = `$${Math.round(totalMarketVal).toLocaleString()}`;
+        if (elStockTotalCost) elStockTotalCost.textContent = `$${Math.round(totalCost).toLocaleString()}`;
+        if (elStockUnrealizedPnL) {
+            elStockUnrealizedPnL.textContent = `${pnlSign}$${Math.round(totalPnL).toLocaleString()}`;
+            elStockUnrealizedPnL.style.color = pnlColor;
+        }
+        if (elStockUnrealizedRate) {
+            elStockUnrealizedRate.textContent = `總報酬率 ${pnlSign}${totalRate}%`;
+            elStockUnrealizedRate.style.color = pnlColor;
+        }
 
         if (summaryStats) {
             summaryStats.textContent = `持倉 ${sortedHoldings.length} 檔 ｜ 總市值 $${Math.round(totalMarketVal).toLocaleString()} ｜ 未實現: ${pnlSign}$${Math.round(totalPnL).toLocaleString()} (${pnlSign}${totalRate}%)`;
@@ -818,7 +1395,7 @@ class WorkbenchApp {
         this.renderStockWeightChart(sortedHoldings, totalMarketVal);
 
         if (sortedHoldings.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-muted);">目前無任何股票持倉庫存</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:2rem; color:var(--text-muted);">目前無任何股票持倉庫存</td></tr>`;
             return;
         }
 
@@ -841,7 +1418,8 @@ class WorkbenchApp {
                 <td class="text-right mono" style="font-weight:700;">${h.shares.toLocaleString()} 股</td>
                 <td class="text-right mono">$${h.avgCost.toLocaleString()}</td>
                 <td class="text-right mono" style="font-weight:700; color:var(--primary);">$${displayPrice.toLocaleString()}</td>
-                <td class="text-right mono" style="font-weight:700;">$${h.marketValue.toLocaleString()}</td>
+                <td class="text-right mono" style="font-weight:700;">$${Math.round(h.totalCost).toLocaleString()}</td>
+                <td class="text-right mono" style="font-weight:700;">$${Math.round(h.marketValue).toLocaleString()}</td>
                 <td class="text-right mono" style="font-weight:700; color:${profitColor};">
                     ${profitSign}$${h.unrealizedPnL.toLocaleString()} (${profitSign}${h.unrealizedRate}%)
                 </td>
@@ -855,7 +1433,7 @@ class WorkbenchApp {
             if (isExpanded) {
                 html += `
                 <tr class="wb-batch-subrow">
-                    <td colspan="8">
+                    <td colspan="9">
                         <div class="wb-batch-subcontainer">
                             <div class="wb-batch-title">📦 FIFO 先進先出買進批次明細 (共 ${lots.length} 批)：</div>
                             <table class="wb-table" style="font-size:0.82rem; background:transparent;">
@@ -1150,12 +1728,67 @@ class WorkbenchApp {
         this.renderHistoryTable();
     }
 
+    setHistoryActionFilter(action) {
+        this.historyFilterAction = action;
+        const group = document.getElementById('historyActionPillGroup');
+        if (group) {
+            group.querySelectorAll('.wb-pill-btn').forEach(btn => {
+                if (btn.getAttribute('data-action') === action) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
+        this.renderHistoryTable();
+    }
+
     onHistoryFilterChange() {
         const select = document.getElementById('historyActionFilter');
         if (select) {
-            this.historyFilterAction = select.value;
-            this.renderHistoryTable();
+            this.setHistoryActionFilter(select.value);
         }
+    }
+
+    onHistoryMarketFilterChange(val) {
+        this.historyMarketFilter = val || 'ALL';
+        this.renderHistoryTable();
+    }
+
+    isMarketMatch(t, market) {
+        if (!market || market === 'ALL') return true;
+        const sym = String(t.symbol || '').trim();
+        const cur = String(t.currency || 'TWD').toUpperCase();
+        const name = String(t.name || '');
+        const isEtf = sym.startsWith('00') || name.toUpperCase().includes('ETF') || name.includes('高息') || name.includes('50') || name.includes('正2');
+
+        if (market === 'ETF') {
+            return isEtf;
+        }
+        if (market === 'HK') {
+            return cur === 'HKD' || sym.length === 5;
+        }
+        if (market === 'US') {
+            return cur === 'USD';
+        }
+        if (market === 'TW') {
+            return cur === 'TWD' && !isEtf;
+        }
+        return true;
+    }
+
+    jumpToPnL(symbol) {
+        this.switchView('pnl');
+        this.pnlSearch = symbol;
+        const pnlInput = document.getElementById('pnlSearchInput');
+        if (pnlInput) pnlInput.value = symbol;
+        this.renderPnLTable();
+        this.showToast(`已定位 ${symbol} 平倉損益紀錄`, 'info');
+    }
+
+    jumpToHoldings(symbol) {
+        this.switchView('stock');
+        this.showToast(`已切換至股票庫存總表`, 'info');
     }
 
     filterHistoryByStock(symbol) {
@@ -1179,10 +1812,60 @@ class WorkbenchApp {
             txs = txs.filter(t => `${t.symbol || ''} ${t.name || ''} ${t.note || ''} ${t.date || ''}`.toLowerCase().includes(q));
         }
 
-        // 類別過濾 (買入 / 賣出)
+        // 買賣類別過濾 (買入 / 賣出)
         if (this.historyFilterAction && this.historyFilterAction !== 'ALL') {
             txs = txs.filter(t => t.action === this.historyFilterAction);
         }
+
+        // 市場過濾 (TW / HK / US / ETF)
+        if (this.historyMarketFilter && this.historyMarketFilter !== 'ALL') {
+            txs = txs.filter(t => this.isMarketMatch(t, this.historyMarketFilter));
+        }
+
+        // 計算當前篩選集合的摩擦成本與統計指標
+        let buyTotal = 0, buyCount = 0;
+        let sellTotal = 0, sellCount = 0;
+        let totalFee = 0, totalTax = 0;
+
+        txs.forEach(t => {
+            const rate = parseFloat(t.exchangeRate) || 1;
+            const feeTwd = Math.round((parseFloat(t.fee) || 0) * rate);
+            const taxTwd = Math.round((parseFloat(t.tax) || 0) * rate);
+            totalFee += feeTwd;
+            totalTax += taxTwd;
+            const netTwd = Math.round(parseFloat(t.netAmountTwd) || parseFloat(t.totalAmount) || 0);
+
+            if (t.action === '買入') {
+                buyTotal += netTwd;
+                buyCount++;
+            } else if (t.action === '賣出') {
+                sellTotal += netTwd;
+                sellCount++;
+            }
+        });
+
+        const totalFriction = totalFee + totalTax;
+        const tradeVolume = buyTotal + sellTotal;
+        const frictionRate = tradeVolume > 0 ? ((totalFriction / tradeVolume) * 100).toFixed(2) : '0.00';
+
+        // 更新頂部摩擦成本看板
+        const elBuyTotal = document.getElementById('histKpiBuyTotal');
+        const elBuyCount = document.getElementById('histKpiBuyCount');
+        const elSellTotal = document.getElementById('histKpiSellTotal');
+        const elSellCount = document.getElementById('histKpiSellCount');
+        const elFeeTotal = document.getElementById('histKpiFeeTotal');
+        const elTaxTotal = document.getElementById('histKpiTaxTotal');
+        const elFrictionTotal = document.getElementById('histKpiFrictionTotal');
+        const elFrictionRate = document.getElementById('histKpiFrictionRate');
+
+        if (elBuyTotal) elBuyTotal.textContent = `$${buyTotal.toLocaleString()}`;
+        if (elBuyCount) elBuyCount.textContent = `${buyCount} 筆買入交易`;
+        if (elSellTotal) elSellTotal.textContent = `$${sellTotal.toLocaleString()}`;
+        if (elSellCount) elSellCount.textContent = `${sellCount} 筆賣出交易`;
+        if (elFeeTotal) elFeeTotal.textContent = `$${totalFee.toLocaleString()}`;
+        if (elTaxTotal) elTaxTotal.textContent = `$${totalTax.toLocaleString()}`;
+        if (elFrictionTotal) elFrictionTotal.textContent = `$${totalFriction.toLocaleString()}`;
+        if (elFrictionRate) elFrictionRate.textContent = `手續費+證交稅 佔交易額 ${frictionRate}%`;
 
         // 依日期或金額進行排序 (預設由新到舊降冪 ▼，同日依建立時間倒序)
         const sortKey = this.historySortKey || 'date';
@@ -1223,11 +1906,22 @@ class WorkbenchApp {
             return;
         }
 
+        // 獲取目前有效庫存標的列表 (供買入時判斷是否顯示「庫存」按鈕)
+        const { holdings } = this.engine.computeFifoHoldings(this.data.transactions || []);
+        const activeHoldingSymbols = new Set(holdings.map(h => h.symbol));
+
         let html = '';
         txs.forEach(t => {
             const isBuy = t.action === '買入';
             const actionTag = isBuy ? 'buy' : 'sell';
             const netTwd = parseFloat(t.netAmountTwd) || parseFloat(t.totalAmount) || 0;
+
+            let extraBtn = '';
+            if (!isBuy) {
+                extraBtn = `<button class="wb-btn sm" onclick="event.stopPropagation(); app.jumpToPnL('${t.symbol}')" title="跳轉查看 ${t.symbol} 已實現平倉損益">🔍 查平倉</button>`;
+            } else if (activeHoldingSymbols.has(t.symbol)) {
+                extraBtn = `<button class="wb-btn sm" onclick="event.stopPropagation(); app.jumpToHoldings('${t.symbol}')" title="跳轉查看 ${t.symbol} 持倉狀態">📦 庫存</button>`;
+            }
 
             html += `
             <tr class="wb-inventory-row" onclick="app.openTxDrawerForEdit('${t.id}')">
@@ -1242,9 +1936,12 @@ class WorkbenchApp {
                 <td class="text-right mono">${parseFloat(t.totalAmount || 0).toLocaleString()} ${t.currency || 'TWD'}</td>
                 <td class="text-right mono" style="font-weight:700;">$${Math.round(netTwd).toLocaleString()}</td>
                 <td style="color:var(--text-muted); font-size:0.82rem;">${t.note || ''}</td>
-                <td style="text-align:center;">
-                    <button class="wb-btn sm" onclick="event.stopPropagation(); app.openTxDrawerForEdit('${t.id}')">✏️ 編輯</button>
-                    <button class="wb-btn sm danger" onclick="event.stopPropagation(); app.deleteTransaction('${t.id}')">🗑️</button>
+                <td style="text-align:center; white-space:nowrap;">
+                    <div style="display:inline-flex; align-items:center; justify-content:flex-end; gap:0.35rem; width:180px;">
+                        ${extraBtn}
+                        <button class="wb-btn sm" onclick="event.stopPropagation(); app.openTxDrawerForEdit('${t.id}')">✏️ 編輯</button>
+                        <button class="wb-btn sm danger" onclick="event.stopPropagation(); app.deleteTransaction('${t.id}')">🗑️</button>
+                    </div>
                 </td>
             </tr>`;
         });
@@ -1257,8 +1954,15 @@ class WorkbenchApp {
     // ==========================================
     getRealizedPnLList() {
         const { calculatedPnL } = this.engine.computeFifoHoldings(this.data.transactions || []);
-        const manualList = this.data.realizedPnL || [];
-        const manualCustom = manualList.filter(m => !calculatedPnL.some(c => (c.transactionId && c.transactionId === m.transactionId) || c.id === m.id));
+        const manualList = (this.data.realizedPnL || []).filter(p => p.id !== 'manual_pnl_1');
+        const manualCustom = manualList.filter(m => {
+            const isCovered = calculatedPnL.some(c => 
+                (c.transactionId && c.transactionId === m.transactionId) || 
+                c.id === m.id ||
+                (c.date === m.date && c.symbol === m.symbol && Math.abs((c.shares || 0) - (m.shares || 0)) < 0.001)
+            );
+            return !isCovered;
+        });
         const all = [...calculatedPnL, ...manualCustom];
         all.sort((a, b) => (b.closeDate || b.date || '').localeCompare(a.closeDate || a.date || ''));
         return all;
@@ -1413,11 +2117,21 @@ class WorkbenchApp {
         tbody.innerHTML = html;
     }
 
+    setPnlPieType(type) {
+        this.pnlPieType = type;
+        document.querySelectorAll('#pnlPieTypeGroup .wb-pill-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-pie-type') === type);
+        });
+        const list = this.getFilteredRealizedPnLList();
+        this.renderRealizedWeightChart(list);
+    }
+
     renderRealizedWeightChart(fullList = []) {
         const canvas = document.getElementById('realizedWeightChart');
         const rankList = document.getElementById('pnlRankList');
         const badgeTotal = document.getElementById('pnlTotalProfitBadge');
         const badgeCount = document.getElementById('pnlTradedCountBadge');
+        const titleEl = document.getElementById('pnlPieCardTitle');
 
         if (!canvas || typeof Chart === 'undefined') return;
 
@@ -1459,46 +2173,108 @@ class WorkbenchApp {
 
         const allStocks = Array.from(stockMap.values());
         const gainers = allStocks.filter(s => s.netProfit > 0).sort((a, b) => b.netProfit - a.netProfit);
+        const losers = allStocks.filter(s => s.netProfit < 0).sort((a, b) => a.netProfit - b.netProfit);
         const totalGrossProfit = gainers.reduce((sum, s) => sum + s.netProfit, 0);
+        const totalGrossLoss = Math.abs(losers.reduce((sum, s) => sum + s.netProfit, 0));
+        const netPnL = totalGrossProfit - totalGrossLoss;
 
-        if (badgeTotal) {
-            badgeTotal.textContent = `獲利總和: +$${Math.round(totalGrossProfit).toLocaleString()}`;
-        }
         if (badgeCount) {
-            badgeCount.textContent = `共 ${allStocks.length} 檔標的平倉`;
+            badgeCount.textContent = `共 ${allStocks.length} 檔標的平倉 (${gainers.length} 賺 ${losers.length} 賠)`;
         }
 
-        // 整理前 7 大獲利標的 + 其他
         let chartLabels = [];
         let chartData = [];
-        const topCount = 7;
+        let palette = [];
+        let denominator = 1;
+        const topCount = 6;
 
-        if (gainers.length <= topCount + 1) {
-            chartLabels = gainers.map(g => {
-                const pct = totalGrossProfit > 0 ? ((g.netProfit / totalGrossProfit) * 100).toFixed(1) : '0.0';
-                return `${g.symbol} ${g.name} (${pct}%)`;
-            });
-            chartData = gainers.map(g => g.netProfit);
+        if (this.pnlPieType === 'loss') {
+            if (titleEl) titleEl.textContent = '⚠️ 已實現虧損標的分佈';
+            if (badgeTotal) badgeTotal.textContent = `虧損總和: -$${Math.round(totalGrossLoss).toLocaleString()}`;
+            denominator = totalGrossLoss;
+
+            if (losers.length === 0) {
+                chartLabels = ['無任何虧損標的 🎉'];
+                chartData = [1];
+                palette = ['#10b981'];
+            } else if (losers.length <= topCount + 1) {
+                chartLabels = losers.map(l => {
+                    const lossAbs = Math.abs(l.netProfit);
+                    const pct = denominator > 0 ? ((lossAbs / denominator) * 100).toFixed(1) : '0.0';
+                    return `${l.symbol} ${l.name} (${pct}%)`;
+                });
+                chartData = losers.map(l => Math.abs(l.netProfit));
+                // 台灣習慣：虧損為綠/青/冷色調
+                palette = ['#10b981', '#059669', '#14b8a6', '#06b6d4', '#0ea5e9', '#6366f1', '#64748b'];
+            } else {
+                const topLosers = losers.slice(0, topCount);
+                const otherLosers = losers.slice(topCount);
+                const otherLoss = Math.abs(otherLosers.reduce((sum, l) => sum + l.netProfit, 0));
+                const otherPct = denominator > 0 ? ((otherLoss / denominator) * 100).toFixed(1) : '0.0';
+
+                chartLabels = topLosers.map(l => {
+                    const lossAbs = Math.abs(l.netProfit);
+                    const pct = denominator > 0 ? ((lossAbs / denominator) * 100).toFixed(1) : '0.0';
+                    return `${l.symbol} ${l.name} (${pct}%)`;
+                });
+                chartData = topLosers.map(l => Math.abs(l.netProfit));
+
+                chartLabels.push(`其他 ${otherLosers.length} 檔 (${otherPct}%)`);
+                chartData.push(otherLoss);
+                palette = ['#10b981', '#059669', '#14b8a6', '#06b6d4', '#0ea5e9', '#6366f1', '#64748b', '#94a3b8'];
+            }
+        } else if (this.pnlPieType === 'comparison') {
+            if (titleEl) titleEl.textContent = '⚖️ 歷史累計盈虧總額對比';
+            const sign = netPnL >= 0 ? '+' : '';
+            const pFactor = totalGrossLoss > 0 ? (totalGrossProfit / totalGrossLoss).toFixed(2) : '∞';
+            if (badgeTotal) badgeTotal.textContent = `淨損益: ${sign}$${Math.round(netPnL).toLocaleString()} (盈虧比: ${pFactor})`;
+
+            denominator = totalGrossProfit + totalGrossLoss;
+            const profitPct = denominator > 0 ? ((totalGrossProfit / denominator) * 100).toFixed(1) : '0.0';
+            const lossPct = denominator > 0 ? ((totalGrossLoss / denominator) * 100).toFixed(1) : '0.0';
+
+            chartLabels = [
+                `獲利總和 (+${profitPct}%)`,
+                `虧損總和 (-${lossPct}%)`
+            ];
+            chartData = [totalGrossProfit, totalGrossLoss];
+            // 台灣習慣：獲利紅、虧損綠
+            palette = ['#ef4444', '#10b981'];
         } else {
-            const topGainers = gainers.slice(0, topCount);
-            const otherGainers = gainers.slice(topCount);
-            const otherProfit = otherGainers.reduce((sum, g) => sum + g.netProfit, 0);
-            const otherPct = totalGrossProfit > 0 ? ((otherProfit / totalGrossProfit) * 100).toFixed(1) : '0.0';
+            // 預設: profit
+            if (titleEl) titleEl.textContent = '🏆 已實現獲利標的分佈';
+            if (badgeTotal) badgeTotal.textContent = `獲利總和: +$${Math.round(totalGrossProfit).toLocaleString()}`;
+            denominator = totalGrossProfit;
 
-            chartLabels = topGainers.map(g => {
-                const pct = totalGrossProfit > 0 ? ((g.netProfit / totalGrossProfit) * 100).toFixed(1) : '0.0';
-                return `${g.symbol} ${g.name} (${pct}%)`;
-            });
-            chartData = topGainers.map(g => g.netProfit);
+            if (gainers.length === 0) {
+                chartLabels = ['尚無獲利標的'];
+                chartData = [1];
+                palette = ['#94a3b8'];
+            } else if (gainers.length <= topCount + 1) {
+                chartLabels = gainers.map(g => {
+                    const pct = denominator > 0 ? ((g.netProfit / denominator) * 100).toFixed(1) : '0.0';
+                    return `${g.symbol} ${g.name} (${pct}%)`;
+                });
+                chartData = gainers.map(g => g.netProfit);
+                // 台灣習慣：獲利紅/暖色系列
+                palette = ['#ef4444', '#f87171', '#fb923c', '#f59e0b', '#eab308', '#f43f5e', '#fb7185'];
+            } else {
+                const topGainers = gainers.slice(0, topCount);
+                const otherGainers = gainers.slice(topCount);
+                const otherProfit = otherGainers.reduce((sum, g) => sum + g.netProfit, 0);
+                const otherPct = denominator > 0 ? ((otherProfit / denominator) * 100).toFixed(1) : '0.0';
 
-            chartLabels.push(`其他 ${otherGainers.length} 檔 (${otherPct}%)`);
-            chartData.push(otherProfit);
+                chartLabels = topGainers.map(g => {
+                    const pct = denominator > 0 ? ((g.netProfit / denominator) * 100).toFixed(1) : '0.0';
+                    return `${g.symbol} ${g.name} (${pct}%)`;
+                });
+                chartData = topGainers.map(g => g.netProfit);
+
+                chartLabels.push(`其他 ${otherGainers.length} 檔 (${otherPct}%)`);
+                chartData.push(otherProfit);
+                palette = ['#ef4444', '#f87171', '#fb923c', '#f59e0b', '#eab308', '#f43f5e', '#fb7185', '#94a3b8'];
+            }
         }
-
-        const palette = [
-            '#34d399', '#38bdf8', '#818cf8', '#fbbf24', '#f472b6',
-            '#a78bfa', '#2dd4bf', '#fb923c', '#4ade80', '#60a5fa'
-        ];
 
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const textColor = isDark ? '#f8fafc' : '#0f172a';
@@ -1533,8 +2309,9 @@ class WorkbenchApp {
                         callbacks: {
                             label: (context) => {
                                 const val = context.raw || 0;
-                                const pct = totalGrossProfit > 0 ? ((val / totalGrossProfit) * 100).toFixed(1) : '0.0';
-                                return ` ${context.label.split(' ')[0]}: +$${Math.round(val).toLocaleString()} (${pct}%)`;
+                                const pct = denominator > 0 ? ((val / denominator) * 100).toFixed(1) : '0.0';
+                                const sign = this.pnlPieType === 'loss' ? '-$' : (this.pnlPieType === 'comparison' && context.dataIndex === 1 ? '-$' : '+$');
+                                return ` ${context.label.split(' ')[0]}: ${sign}${Math.round(val).toLocaleString()} (${pct}%)`;
                             }
                         }
                     },
@@ -1547,9 +2324,9 @@ class WorkbenchApp {
                             family: "'Roboto Mono', 'Noto Sans TC', sans-serif"
                         },
                         formatter: (value) => {
-                            if (!totalGrossProfit || totalGrossProfit === 0) return '';
-                            const pct = ((value / totalGrossProfit) * 100).toFixed(1);
-                            if (parseFloat(pct) < 4) return ''; // 佔比小於 4% 隱藏文字避免擁擠
+                            if (!denominator || denominator === 0) return '';
+                            const pct = ((value / denominator) * 100).toFixed(1);
+                            if (parseFloat(pct) < 4) return '';
                             return `${pct}%`;
                         },
                         textShadowBlur: 4,
@@ -1561,8 +2338,13 @@ class WorkbenchApp {
 
         // 渲染右側歷史平倉個股損益排行清單
         if (rankList) {
-            // 由累計獲利最高排到虧損最多
-            const sortedAll = [...allStocks].sort((a, b) => b.netProfit - a.netProfit);
+            let sortedAll = [];
+            if (this.pnlPieType === 'loss') {
+                // 若選虧損，由虧損最多排到獲利最多
+                sortedAll = [...allStocks].sort((a, b) => a.netProfit - b.netProfit);
+            } else {
+                sortedAll = [...allStocks].sort((a, b) => b.netProfit - a.netProfit);
+            }
             const maxAbs = Math.max(...sortedAll.map(s => Math.abs(s.netProfit)), 1);
 
             let rankHtml = '';
@@ -1925,8 +2707,10 @@ class WorkbenchApp {
         } else if (this.editingType === 'bankAsset') {
             if (title) title.textContent = item.id.includes('Date.now') ? '＋ 新增帳戶餘額' : '✏️ 編輯帳戶餘額';
             if (badge) {
-                badge.textContent = item.accountType || '活存';
-                badge.className = 'wb-tag bank';
+                const meta = this.getAccountTypeMeta(item.accountType, (item.twdAmount || item.originalAmount || 0) < 0);
+                badge.textContent = `${meta.icon} ${meta.text}`;
+                badge.className = 'wb-tag ' + meta.tagClass;
+                badge.style = meta.style;
             }
 
             body.innerHTML = `
@@ -1938,16 +2722,17 @@ class WorkbenchApp {
 
                 <div class="wb-form-group">
                     <label class="wb-label">銀行/帳戶名稱 (支援下拉挑選或輸入)</label>
-                    <input type="text" class="wb-input" id="drawer_bank_name" list="bankAccountList" value="${item.bankName || ''}" placeholder="例如: 富邦、元大CMA">
+                    <input type="text" class="wb-input" id="drawer_bank_name" list="bankAccountList" value="${item.bankName || ''}" placeholder="例如: 富邦、元大CMA" oninput="app.onBankNameInput(this.value)">
                 </div>
 
                 <div class="wb-form-group">
                     <label class="wb-label">帳戶類型</label>
-                    <select class="wb-select" id="drawer_bank_type">
-                        <option value="活存" ${item.accountType === '活存' ? 'selected' : ''}>活期存款</option>
-                        <option value="定存" ${item.accountType === '定存' ? 'selected' : ''}>定期存款</option>
-                        <option value="證券交割" ${item.accountType === '證券交割' ? 'selected' : ''}>證券交割戶</option>
-                        <option value="外幣" ${item.accountType === '外幣' ? 'selected' : ''}>外幣帳戶</option>
+                    <select class="wb-select" id="drawer_bank_type" onchange="app.onDrawerBankTypeChange(this.value)">
+                        <option value="活存" ${item.accountType === '活存' ? 'selected' : ''}>💰 活期存款</option>
+                        <option value="定存" ${item.accountType === '定存' ? 'selected' : ''}>🏦 定期存款</option>
+                        <option value="證券交割" ${item.accountType === '證券交割' ? 'selected' : ''}>📈 證券交割戶</option>
+                        <option value="外幣" ${item.accountType === '外幣' ? 'selected' : ''}>🌐 外幣帳戶</option>
+                        <option value="負債" ${item.accountType === '負債' ? 'selected' : ''}>💳 信用卡/應繳負債</option>
                     </select>
                 </div>
 
@@ -1961,8 +2746,8 @@ class WorkbenchApp {
                 </div>
 
                 <div class="wb-form-group">
-                    <label class="wb-label">原幣存款金額 ($)</label>
-                    <input type="number" step="any" class="wb-input mono" id="drawer_bank_orig" value="${item.originalAmount || 0}" oninput="app.onBankAmountChange()">
+                    <label class="wb-label" id="drawer_bank_orig_label">${item.accountType === '負債' ? '應繳負債金額 ($，系統自動負數統計)' : '原幣存款金額 ($)'}</label>
+                    <input type="number" step="any" class="wb-input mono" id="drawer_bank_orig" value="${Math.abs(item.originalAmount || 0)}" placeholder="${item.accountType === '負債' ? '例如: 8136' : '0'}" oninput="app.onBankAmountChange()">
                 </div>
 
                 <div class="wb-form-group">
@@ -1972,7 +2757,7 @@ class WorkbenchApp {
 
                 <div class="wb-form-group col-full">
                     <label class="wb-label">折合台幣 (TWD，可手動微調實際金額)</label>
-                    <input type="number" class="wb-input mono" id="drawer_bank_twd" value="${item.twdAmount || 0}" oninput="app.onManualBankTwdChange(this.value)" style="font-weight:700; color:var(--primary);">
+                    <input type="number" class="wb-input mono" id="drawer_bank_twd" value="${item.accountType === '負債' ? -Math.abs(item.twdAmount || 0) : (item.twdAmount || 0)}" oninput="app.onManualBankTwdChange(this.value)" style="font-weight:700; color:${item.accountType === '負債' ? 'var(--danger)' : 'var(--primary)'};">
                 </div>
 
                 <div class="wb-form-group col-full">
@@ -1985,6 +2770,69 @@ class WorkbenchApp {
                 <button class="wb-btn sm danger" onclick="app.deleteCurrentEditing()">🗑️ 刪除紀錄</button>
                 <button class="wb-btn sm primary" onclick="app.saveCurrentEditing()">💾 完成存檔</button>
             </div>`;
+        }
+    }
+
+    onDrawerBankTypeChange(type) {
+        if (this.editingItem) {
+            this.editingItem.accountType = type;
+        }
+        const badge = document.getElementById('drawerBadge');
+        if (badge) {
+            const meta = this.getAccountTypeMeta(type);
+            badge.textContent = `${meta.icon} ${meta.text}`;
+            badge.className = 'wb-tag ' + meta.tagClass;
+            badge.style = meta.style;
+        }
+        const origInput = document.getElementById('drawer_bank_orig');
+        const twdInput = document.getElementById('drawer_bank_twd');
+        const origLabel = document.getElementById('drawer_bank_orig_label');
+        const isDebt = type === '負債';
+        if (origLabel) {
+            origLabel.textContent = isDebt ? '應繳負債金額 ($，系統自動負數統計)' : '原幣存款金額 ($)';
+        }
+        if (origInput) {
+            origInput.placeholder = isDebt ? '例如: 8136' : '0';
+        }
+        if (twdInput) {
+            twdInput.style.color = isDebt ? 'var(--danger)' : 'var(--primary)';
+            const val = parseFloat(twdInput.value) || 0;
+            if (isDebt && val > 0) {
+                twdInput.value = -val;
+            } else if (!isDebt && val < 0) {
+                twdInput.value = Math.abs(val);
+            }
+        }
+    }
+
+    onBankNameInput(nameVal) {
+        if (!this.editingItem || this.editingType !== 'bankAsset') return;
+        const name = (nameVal || '').trim();
+        this.editingItem.bankName = name;
+        const typeSelect = document.getElementById('drawer_bank_type');
+        if (!typeSelect) return;
+
+        // 智慧型自動偵測帳戶類型
+        if (name.includes('交割') || name.includes('證券')) {
+            if (typeSelect.value !== '證券交割') {
+                typeSelect.value = '證券交割';
+                this.onDrawerBankTypeChange('證券交割');
+            }
+        } else if (name.includes('信用卡') || name.includes('負債')) {
+            if (typeSelect.value !== '負債') {
+                typeSelect.value = '負債';
+                this.onDrawerBankTypeChange('負債');
+            }
+        } else if (name.includes('外幣') || name.includes('美元') || name.includes('外匯')) {
+            if (typeSelect.value !== '外幣') {
+                typeSelect.value = '外幣';
+                this.onDrawerBankTypeChange('外幣');
+            }
+        } else if (name.includes('定存')) {
+            if (typeSelect.value !== '定存') {
+                typeSelect.value = '定存';
+                this.onDrawerBankTypeChange('定存');
+            }
         }
     }
 
@@ -2060,13 +2908,25 @@ class WorkbenchApp {
                 return;
             }
 
+            // 信用卡/負債自動防呆轉負數
+            let finalOrig = orig;
+            let finalTwd = twd;
+            const isDebtType = accountType === '負債' || (bankName && (bankName.includes('信用卡') || bankName.includes('負債')));
+            if (isDebtType) {
+                finalOrig = -Math.abs(orig);
+                finalTwd = -Math.abs(twd);
+            } else {
+                finalOrig = Math.abs(orig);
+                finalTwd = Math.abs(twd);
+            }
+
             this.editingItem.date = date;
             this.editingItem.bankName = bankName;
-            this.editingItem.accountType = accountType;
+            this.editingItem.accountType = isDebtType ? '負債' : accountType;
             this.editingItem.currency = currency;
-            this.editingItem.originalAmount = orig;
+            this.editingItem.originalAmount = finalOrig;
             this.editingItem.exchangeRate = fx;
-            this.editingItem.twdAmount = twd;
+            this.editingItem.twdAmount = finalTwd;
             this.editingItem.note = note;
 
             const idx = this.data.bankAssets.findIndex(b => b.id === this.editingItem.id);
@@ -2083,6 +2943,16 @@ class WorkbenchApp {
                     this.data.meta.accountList.push(bankName);
                 }
             }
+
+            // 同步寫入後端 server assets_data.json
+            try {
+                const baseUrl = (window.location.protocol === 'http:' || window.location.protocol === 'https:') ? window.location.origin : 'http://127.0.0.1:8080';
+                fetch(`${baseUrl}/api/save-bank-assets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ bankAssets: this.data.bankAssets })
+                }).catch(() => {});
+            } catch {}
 
             this.showToast(`已儲存銀行帳戶: ${bankName}`, 'success');
         }
@@ -2734,11 +3604,11 @@ class WorkbenchApp {
         if (this.trendTimeRange !== 'ALL') {
             if (expandBtn) expandBtn.textContent = `顯示中：${filteredData.summary.rangeLabel} (共 ${items.length} 期)`;
         } else {
-            if (!this.isLedgerExpanded && items.length > 6) {
-                items = items.slice(0, 6);
+            if (!this.isLedgerExpanded && items.length > 3) {
+                items = items.slice(0, 3);
             }
             if (expandBtn) {
-                expandBtn.textContent = this.isLedgerExpanded ? '收合顯示 (最近 6 個月) ▲' : `展開全部月份 (${filteredData.ledger.length} 期) ▼`;
+                expandBtn.textContent = this.isLedgerExpanded ? '收合顯示 (最近 3 個月) ▲' : `展開全部月份 (共 ${filteredData.ledger.length} 期) ▼`;
             }
         }
 

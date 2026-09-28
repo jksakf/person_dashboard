@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 個人資產一體化工作台 - 本地原生微服務 (server.js)
  * 職責：
  *   1. 本地靜態檔案服務 (workbench.html, index.html 等)
@@ -213,6 +213,30 @@ function saveMonthlySnapshots(snapshots) {
     return Object.keys(snapshots).length;
 }
 
+// 4. 儲存銀行帳戶清單至 assets_data.json
+function saveBankAssets(bankAssets) {
+    if (!fs.existsSync(ASSETS_DATA_FILE)) {
+        throw new Error('assets_data.json 不存在');
+    }
+
+    let fileContent = fs.readFileSync(ASSETS_DATA_FILE);
+    if (fileContent[0] === 0xEF && fileContent[1] === 0xBB && fileContent[2] === 0xBF) {
+        fileContent = fileContent.slice(3);
+    }
+
+    const data = JSON.parse(fileContent.toString('utf8'));
+    data.bankAssets = bankAssets;
+    data.meta = data.meta || {};
+    data.meta.lastUpdated = new Date().toISOString();
+
+    const jsonStr = JSON.stringify(data, null, 2);
+    const bom = Buffer.from([0xEF, 0xBB, 0xBF]);
+    const finalBuffer = Buffer.concat([bom, Buffer.from(jsonStr, 'utf8')]);
+
+    fs.writeFileSync(ASSETS_DATA_FILE, finalBuffer);
+    return bankAssets.length;
+}
+
 // 建立 HTTP 伺服器
 const server = http.createServer(async (req, res) => {
     const parsedUrl = url.parse(req.url, true);
@@ -273,6 +297,25 @@ const server = http.createServer(async (req, res) => {
                         const savedCount = saveMonthlySnapshots(snapshots);
                         res.writeHead(200);
                         res.end(JSON.stringify({ success: true, savedCount: savedCount, message: `成功儲存 ${savedCount} 個月份資產快照` }));
+                    } catch (err) {
+                        res.writeHead(500);
+                        res.end(JSON.stringify({ success: false, error: err.message }));
+                    }
+                });
+                return;
+            }
+
+            // API 4: POST /api/save-bank-assets
+            if (pathname === '/api/save-bank-assets' && req.method === 'POST') {
+                let body = '';
+                req.on('data', chunk => body += chunk);
+                req.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(body);
+                        const bankAssets = parsed.bankAssets || parsed;
+                        const savedCount = saveBankAssets(bankAssets);
+                        res.writeHead(200);
+                        res.end(JSON.stringify({ success: true, count: savedCount, message: `成功同步 ${savedCount} 筆銀行帳戶至 assets_data.json` }));
                     } catch (err) {
                         res.writeHead(500);
                         res.end(JSON.stringify({ success: false, error: err.message }));

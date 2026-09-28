@@ -313,6 +313,32 @@ console.log('\n▶ [測試 8] 月度資產結算總表與手動微調優先權')
     console.log('  ✅ 6M / 1Y / 3Y / ALL 時序膠囊切片與動態成長指標驗證 100% 正確！');
 }
 
+// 測試 10: 券商對帳單標準整數分攤模式驗證 (訊芯-KY 2股與98股損益精準對齊)
+{
+    console.log('\n▶ [測試 10] 券商對帳單標準整數分攤模式驗證 (訊芯-KY 2股與98股損益精準對齊)');
+    const engine = new WorkbenchEngine();
+    const rawData = JSON.parse(fs.readFileSync(path.join(__dirname, '../assets_data.json'), 'utf8').replace(/^\uFEFF/, ''));
+    const { calculatedPnL } = engine.computeFifoHoldings(rawData.transactions || []);
+
+    const pnl33 = calculatedPnL.find(p => p.date === '2026/06/23' && p.symbol === '6451' && p.shares === 2);
+    const pnl34 = calculatedPnL.find(p => p.date === '2026/06/23' && p.symbol === '6451' && p.shares === 98);
+
+    assert.ok(pnl33, '必須能找到 2026/06/23 訊芯 2 股平倉紀錄');
+    assert.ok(pnl34, '必須能找到 2026/06/23 訊芯 98 股平倉紀錄');
+
+    assert.strictEqual(pnl33.costBasis, 970, '訊芯 2 股認列成本必須為整數 970 (零股手續費未滿1元捨去)');
+    assert.strictEqual(pnl33.sellRevenue, 1250, '訊芯 2 股賣出實收必須為整數 1250');
+    assert.strictEqual(pnl33.netProfit, 280, '訊芯 2 股已實現損益必須 100% 吻合證券 APP 對帳單 $280');
+
+    assert.strictEqual(pnl34.costBasis, 57829, '訊芯 98 股認列成本必須為整數 57829 (完整結轉前批剩餘20元手續費)');
+    assert.strictEqual(pnl34.sellRevenue, 60527, '訊芯 98 股賣出實收必須為整數 60527');
+    assert.strictEqual(pnl34.netProfit, 2698, '訊芯 98 股已實現損益必須 100% 吻合證券 APP 對帳單 $2698');
+
+    // 兩筆總損益守恆
+    assert.strictEqual(pnl33.netProfit + pnl34.netProfit, 2978, '兩筆平倉損益加總必須等於真實銀行交割實收減交割成本 2978 元');
+    console.log('  ✅ 訊芯-KY 零股分攤、尾數結轉與證券 APP 對帳單 ($280 / $2698) 100% 精準對齊！');
+}
+
 console.log('\n🎉 所有金融運算與資料結構測試均通過！');
 
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW" data-theme="dark">
 
 <head>
@@ -131,10 +131,14 @@
                     <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
                         <!-- 膠囊按鈕群 -->
                         <div class="wb-pill-group" id="trendTimeRangeGroup">
-                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('6M')" data-range="6M">6M</button>
-                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('1Y')" data-range="1Y">1Y</button>
-                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('3Y')" data-range="3Y">3Y</button>
-                            <button type="button" class="wb-pill-btn active" onclick="app.setTrendTimeRange('ALL')" data-range="ALL">全部 (ALL)</button>
+                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('6M')"
+                                data-range="6M">6M</button>
+                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('1Y')"
+                                data-range="1Y">1Y</button>
+                            <button type="button" class="wb-pill-btn" onclick="app.setTrendTimeRange('3Y')"
+                                data-range="3Y">3Y</button>
+                            <button type="button" class="wb-pill-btn active" onclick="app.setTrendTimeRange('ALL')"
+                                data-range="ALL">全部 (ALL)</button>
                         </div>
                         <span id="trendSummaryBadge" class="wb-tag bank">載入中...</span>
                     </div>
@@ -146,13 +150,15 @@
 
             <!-- 📑 月度資產結算總表 (Monthly Net Worth Ledger) -->
             <div class="wb-table-wrapper" style="margin-top: 1.25rem;">
-                <div class="wb-table-header-box" style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="wb-table-header-box"
+                    style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; align-items:center; gap:0.6rem;">
                         <strong style="font-size: 0.98rem;">📑 月度資產結算總表</strong>
                         <span style="font-size:0.8rem; color:var(--text-muted);">(月末最後一日結算，點擊「✏️ 編輯」可手動校準)</span>
                     </div>
                     <div style="display:flex; align-items:center; gap:0.5rem;">
-                        <button class="wb-btn sm" id="btnToggleLedgerExpand" onclick="app.toggleLedgerExpand()" style="font-size:0.78rem; padding:0.25rem 0.6rem;">
+                        <button class="wb-btn sm" id="btnToggleLedgerExpand" onclick="app.toggleLedgerExpand()"
+                            style="font-size:0.78rem; padding:0.25rem 0.6rem;">
                             展開全部月份 ▼
                         </button>
                     </div>
@@ -191,13 +197,124 @@
                     </div>
                 </div>
 
-                <!-- 近期交易成交量分佈圖 -->
-                <div class="wb-chart-card">
-                    <div class="wb-section-title">
-                        <span>📊 近期交易成交量分佈 (月度)</span>
+                <!-- 雙層戰情卡：🛡️ 財務安全防守線 ＋ ⚔️ 今年度 YTD 投資戰果 -->
+                <div class="wb-chart-card"
+                    style="display:flex; flex-direction:column; gap:0.9rem; padding:1.1rem 1.25rem;">
+                    <!-- 上半區：方案 1 財務安全防守線 -->
+                    <div style="padding-bottom:0.85rem; border-bottom:1px solid var(--card-border);">
+                        <div class="wb-section-title" style="margin-bottom:0.6rem;">
+                            <span style="font-weight:700;">🛡️ 財務安全防守線 (流動性與負債)</span>
+                            <span id="overviewSafetyBadge" class="wb-tag success">🟢 體質優良</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.6rem;">
+                            <div
+                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">實質流動現金儲備
+                                </div>
+                                <div class="mono" id="overviewNetCashVal"
+                                    style="font-weight:700; font-size:1.05rem; color:#38bdf8;">$0</div>
+                            </div>
+                            <div
+                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">信用卡應繳負債
+                                </div>
+                                <div class="mono" id="overviewCreditDebtVal"
+                                    style="font-weight:700; font-size:1.05rem; color:var(--danger);">$0</div>
+                            </div>
+                            <div
+                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">流動負債比率
+                                </div>
+                                <div class="mono" id="overviewDebtRatioVal"
+                                    style="font-weight:700; font-size:1.05rem; color:var(--text-color);">0.0%</div>
+                            </div>
+                        </div>
+                        <!-- 流動性與負債健康比重視覺進度條 -->
+                        <div style="margin-top:0.65rem;">
+                            <div
+                                style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.3rem;">
+                                <span style="color:#38bdf8;" id="overviewCashRatioLabel">💧 實質防守水位 <strong
+                                        id="overviewCashRatioText">82.0%</strong></span>
+                                <span style="color:var(--danger);" id="overviewDebtRatioLabel">💳 負債侵蝕率 <strong
+                                        id="overviewDebtRatioText">18.0%</strong></span>
+                            </div>
+                            <div
+                                style="height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; display:flex;">
+                                <div id="overviewCashBar"
+                                    style="width:82%; height:100%; background:#38bdf8; transition:width 0.3s ease;">
+                                </div>
+                                <div id="overviewDebtBar"
+                                    style="width:18%; height:100%; background:#ef4444; transition:width 0.3s ease;">
+                                </div>
+                            </div>
+                            <div id="overviewSafetyTip"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                                💡 備用流動金可完全覆蓋現有負債約 4.5 倍，財務安全防守縱深充裕。
+                            </div>
+                        </div>
                     </div>
-                    <div class="wb-chart-container">
-                        <canvas id="tradeBarChart"></canvas>
+
+                    <!-- 下半區：方案 3 今年度 YTD 投資戰果 -->
+                    <div style="padding-top:0.15rem;">
+                        <div class="wb-section-title" style="margin-bottom:0.6rem;">
+                            <div style="display:flex; align-items:center; gap:0.4rem;">
+                                <span style="font-weight:700;">⚔️ 年度戰果:</span>
+                                <select id="overviewYearSelect" class="wb-select sm"
+                                    style="width:auto; font-size:0.8rem; font-weight:700; padding:0.15rem 0.4rem; height:26px;"
+                                    onchange="app.changeOverviewYear(this.value)">
+                                    <!-- 由 JavaScript 動態填入年份 -->
+                                </select>
+                            </div>
+                            <span id="overviewYtdGrowthBadge" class="wb-tag"
+                                style="background:rgba(56,189,248,0.15); color:#38bdf8;">YTD +0.0%</span>
+                        </div>
+                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.6rem;">
+                            <div
+                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;"
+                                    id="overviewYtdNetGrowthLabel">年度淨資產增長</div>
+                                <div class="mono" id="overviewYtdNetGrowth"
+                                    style="font-weight:700; font-size:1.05rem; color:var(--text-color);">$0</div>
+                            </div>
+                            <div
+                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;"
+                                    id="overviewYtdRealizedLabel">年度已實現獲利</div>
+                                <div class="mono" id="overviewYtdRealizedPnL"
+                                    style="font-weight:700; font-size:1.05rem; color:var(--danger);">$0</div>
+                            </div>
+                            <div
+                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;"
+                                    id="overviewYtdWinRateLabel">年度平倉戰績</div>
+                                <div class="mono" id="overviewYtdWinRate"
+                                    style="font-weight:700; font-size:1.05rem; color:var(--text-color);">0勝 0負 (0%)
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 年度平倉戰果視覺進度條 -->
+                        <div style="margin-top:0.65rem;">
+                            <div
+                                style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.3rem;">
+                                <span style="color:var(--danger);">🏆 獲利筆數佔比 <strong
+                                        id="overviewWinRatioText">0.0%</strong></span>
+                                <span style="color:var(--success);">⚠️ 虧損筆數佔比 <strong
+                                        id="overviewLossRatioText">0.0%</strong></span>
+                            </div>
+                            <div
+                                style="height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; display:flex;">
+                                <div id="overviewWinBar"
+                                    style="width:50%; height:100%; background:var(--danger); transition:width 0.3s ease;">
+                                </div>
+                                <div id="overviewLossBar"
+                                    style="width:50%; height:100%; background:var(--success); transition:width 0.3s ease;">
+                                </div>
+                            </div>
+                            <div id="overviewYtdTip"
+                                style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+                                💡 結算基準至 2026 年最新月份，包含歷史 FIFO 已實現平倉損益。
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -207,6 +324,29 @@
              View 2: 🏦 銀行資產頁面 (Bank Assets)
              ============================================== -->
         <section class="wb-view" id="view-bank">
+            <!-- 銀行存款與流動資金 3 大核心指標看板 -->
+            <div class="wb-kpi-grid" id="bankKpiGrid"
+                style="margin-bottom: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">🏦 當期總存款餘額 (TWD)</div>
+                    <div class="wb-kpi-num" id="bankKpiDepositTotal" style="color: #38bdf8; font-size: 1.35rem;">$0
+                    </div>
+                    <div class="wb-kpi-sub" id="bankKpiDepositCount">0 個正數存款帳戶</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">💳 當期總負債 (信用卡款)</div>
+                    <div class="wb-kpi-num" id="bankKpiLiabilityTotal"
+                        style="color: var(--danger); font-size: 1.35rem;">$0</div>
+                    <div class="wb-kpi-sub" id="bankKpiLiabilityCount">0 個負債/應繳帳戶</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">💎 實質淨流動資金 (TWD)</div>
+                    <div class="wb-kpi-num" id="bankKpiNetLiquidCash"
+                        style="color: var(--success); font-size: 1.35rem;">$0</div>
+                    <div class="wb-kpi-sub">總存款扣除信用卡應繳負債</div>
+                </div>
+            </div>
+
             <div class="wb-view-toolbar">
                 <div class="wb-toolbar-left">
                     <div style="display:flex; align-items:center; gap:0.6rem;">
@@ -227,6 +367,33 @@
                     <button class="wb-btn sm" onclick="app.exportCsv('bankAssets')" title="匯出相容 Excel 之銀行 CSV">
                         🏦 匯出銀行 CSV
                     </button>
+                </div>
+            </div>
+
+            <!-- 銀行存款分佈圖表與排行清單 -->
+            <div class="wb-chart-grid" style="margin-bottom: 1rem;">
+                <!-- 銀行存款佔比甜甜圈圖 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span>🥧 各大金融機構存款佔比</span>
+                        <span id="bankTotalDepositBadge" class="wb-tag bank">總存款: $0</span>
+                    </div>
+                    <div class="wb-chart-container" style="min-height:270px;">
+                        <canvas id="bankShareChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 銀行帳戶資金佔比排行清單 -->
+                <div class="wb-chart-card">
+                    <div class="wb-section-title">
+                        <span>📋 各帳戶資金分佈排行</span>
+                        <span id="bankAccountCountBadge" class="wb-tag"
+                            style="background:rgba(56,189,248,0.15); color:#38bdf8;">共 0 個帳戶</span>
+                    </div>
+                    <div id="bankRankList"
+                        style="display:flex; flex-direction:column; gap:0.6rem; overflow-y:auto; max-height:270px; padding-right:0.25rem;">
+                        <!-- 由 JavaScript 動態填入 -->
+                    </div>
                 </div>
             </div>
 
@@ -263,6 +430,28 @@
              View 3: 📦 股票庫存頁面 (Stock Holdings)
              ============================================== -->
         <section class="wb-view" id="view-stock">
+            <!-- 股票持倉 3 大核心指標看板 -->
+            <div class="wb-kpi-grid" id="stockKpiGrid"
+                style="margin-bottom: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">💰 持股總市值 (TWD)</div>
+                    <div class="wb-kpi-num" id="stockKpiMarketValue" style="color: var(--primary); font-size: 1.35rem;">
+                        $0</div>
+                    <div class="wb-kpi-sub" id="stockKpiMarketValueSub">最新結算現價加總</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">📥 投入總成本 (TWD)</div>
+                    <div class="wb-kpi-num" id="stockKpiTotalCost"
+                        style="color: var(--text-color); font-size: 1.35rem;">$0</div>
+                    <div class="wb-kpi-sub" id="stockKpiTotalCostSub">FIFO 歷史加權買進成本</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">📈 帳面未實現損益 (TWD)</div>
+                    <div class="wb-kpi-num" id="stockKpiUnrealizedPnL" style="font-size: 1.35rem;">$0</div>
+                    <div class="wb-kpi-sub" id="stockKpiUnrealizedRate">總報酬率 +0.00%</div>
+                </div>
+            </div>
+
             <div class="wb-view-toolbar">
                 <div class="wb-toolbar-left" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
                     <div style="display:flex; align-items:center; gap:0.6rem;">
@@ -276,9 +465,11 @@
                             style="font-size:0.8rem; padding:0.2rem 0.5rem; height:30px; width:auto;"
                             onchange="app.changeStockSort(this.value)">
                             <option value="marketValue_desc">💰 持股市值 (由大到小)</option>
+                            <option value="totalCost_desc">📥 投入總成本 (由大到小)</option>
                             <option value="unrealizedPnL_desc">📈 未實現損益 (由大到小)</option>
                             <option value="unrealizedPnL_asc">📉 未實現損益 (由小到大)</option>
                             <option value="unrealizedRate_desc">🚀 報酬率 (由高到低)</option>
+                            <option value="unrealizedRate_asc">🪂 報酬率 (由低到高)</option>
                             <option value="shares_desc">📊 持有股數 (由大到小)</option>
                         </select>
                     </div>
@@ -325,7 +516,7 @@
                 </div>
             </div>
 
-            <!-- 股票持倉庫存大表 -->
+            <!-- 股票持倉庫存大表 (獨立雙直欄設計) -->
             <div class="wb-table-wrapper" id="holdingsTableSection">
                 <div class="wb-table-scroll-container">
                     <table class="wb-table" id="holdingsTable">
@@ -338,8 +529,13 @@
                                     持有股數 <span id="sortIconShares"
                                         style="font-size:0.75rem; color:var(--primary);"></span>
                                 </th>
-                                <th class="text-right">加權均價</th>
-                                <th class="text-right">最新價格</th>
+                                <th class="text-right">成本均價</th>
+                                <th class="text-right">最新現價</th>
+                                <th class="text-right" style="cursor:pointer; user-select:none;"
+                                    onclick="app.setStockSort('totalCost')" title="點擊依投入總成本排序">
+                                    投入總成本 <span id="sortIconTotalCost"
+                                        style="font-size:0.75rem; color:var(--primary);"></span>
+                                </th>
                                 <th class="text-right" style="cursor:pointer; user-select:none;"
                                     onclick="app.setStockSort('marketValue')" title="點擊依持股市值排序">
                                     持股市值 <span id="sortIconMarketValue"
@@ -365,24 +561,78 @@
              View 4: 📈 交易紀錄頁面 (Transactions History)
              ============================================== -->
         <section class="wb-view" id="view-history">
+            <!-- 交易摩擦成本與流動性戰情看板 -->
+            <div class="wb-kpi-grid" id="historyKpiGrid"
+                style="margin-bottom: 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">💳 累計買入金額 (TWD)</div>
+                    <div class="wb-kpi-num" id="histKpiBuyTotal" style="color: var(--success); font-size: 1.35rem;">$0
+                    </div>
+                    <div class="wb-kpi-sub" id="histKpiBuyCount">0 筆買入交易</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">💰 累計賣出金額 (TWD)</div>
+                    <div class="wb-kpi-num" id="histKpiSellTotal" style="color: var(--danger); font-size: 1.35rem;">$0
+                    </div>
+                    <div class="wb-kpi-sub" id="histKpiSellCount">0 筆賣出交易</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">🧾 券商手續費 (TWD)</div>
+                    <div class="wb-kpi-num" id="histKpiFeeTotal" style="color: #eab308; font-size: 1.35rem;">$0</div>
+                    <div class="wb-kpi-sub" id="histKpiFeeSub">折合台幣手續費總計</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">🏛️ 證券交易稅 (TWD)</div>
+                    <div class="wb-kpi-num" id="histKpiTaxTotal" style="color: #f97316; font-size: 1.35rem;">$0</div>
+                    <div class="wb-kpi-sub" id="histKpiTaxSub">法定證交稅支出總計</div>
+                </div>
+                <div class="wb-kpi-card" style="padding: 0.75rem 1rem;">
+                    <div class="wb-kpi-title">⚡ 總摩擦成本支出</div>
+                    <div class="wb-kpi-num" id="histKpiFrictionTotal"
+                        style="color: var(--text-color); font-size: 1.35rem;">$0</div>
+                    <div class="wb-kpi-sub" id="histKpiFrictionRate">摩擦佔比 0.00%</div>
+                </div>
+            </div>
+
             <div class="wb-view-toolbar">
-                <div class="wb-toolbar-left" style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                    <input type="text" class="wb-search-input" id="historySearchInput" placeholder="🔍 搜尋標的代號、名稱、備註..."
-                        style="width:220px;" oninput="app.onHistorySearch(this.value)">
-                    <select class="wb-select" id="historyActionFilter" style="width:105px;"
-                        onchange="app.onHistoryFilterChange()">
-                        <option value="ALL">全部類別</option>
-                        <option value="買入">買入</option>
-                        <option value="賣出">賣出</option>
-                    </select>
+                <div class="wb-toolbar-left" style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                    <input type="text" class="wb-search-input" id="historySearchInput" placeholder="🔍 搜尋代號、名稱、備註..."
+                        style="width:200px;" oninput="app.onHistorySearch(this.value)">
+
+                    <!-- 買賣方向膠囊按鈕群 (風格 A 台股券商標準：買入紅 🔴，賣出綠 🟢) -->
+                    <div class="wb-pill-group" id="historyActionPillGroup">
+                        <button type="button" class="wb-pill-btn active" data-action="ALL"
+                            onclick="app.setHistoryActionFilter('ALL')">全部</button>
+                        <button type="button" class="wb-pill-btn" data-action="買入"
+                            onclick="app.setHistoryActionFilter('買入')" style="color:#ef4444;">🔴 買入</button>
+                        <button type="button" class="wb-pill-btn" data-action="賣出"
+                            onclick="app.setHistoryActionFilter('賣出')" style="color:#22c55e;">🟢 賣出</button>
+                    </div>
+
+                    <!-- 市場類別精緻下拉選單 -->
+                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                        <span style="font-size:0.8rem; color:var(--text-muted); white-space:nowrap;">市場:</span>
+                        <select class="wb-select" id="historyMarketFilter"
+                            style="width:auto; font-size:0.8rem; padding:0.2rem 0.5rem; height:30px;"
+                            onchange="app.onHistoryMarketFilterChange(this.value)">
+                            <option value="ALL">全部市場</option>
+                            <option value="TW">🇹🇼 台股</option>
+                            <option value="ETF">📊 ETF 指數</option>
+                            <option value="HK">🇭🇰 港股</option>
+                            <option value="US">🇺🇸 美股</option>
+                        </select>
+                    </div>
+
+                    <!-- 排序下拉選單 -->
                     <select class="wb-select" id="historySortSelect"
-                        style="width:auto; font-size:0.8rem; padding:0.2rem 0.5rem; height:32px;"
+                        style="width:auto; font-size:0.8rem; padding:0.2rem 0.5rem; height:30px;"
                         onchange="app.changeHistorySort(this.value)">
                         <option value="date_desc">📅 日期 (由新到舊)</option>
                         <option value="date_asc">📅 日期 (由舊到新)</option>
                         <option value="amount_desc">💰 金額 (由大到小)</option>
                         <option value="amount_asc">💰 金額 (由小到大)</option>
                     </select>
+
                     <span id="historyCountBadge" style="font-size:0.8rem; color:var(--text-muted); align-self:center;">
                         共 0 筆
                     </span>
@@ -422,7 +672,7 @@
                                         style="font-size:0.75rem; color:var(--primary);"></span>
                                 </th>
                                 <th>備註</th>
-                                <th style="text-align:center;">操作</th>
+                                <th style="text-align:center; min-width:190px;">操作</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody">
@@ -484,11 +734,21 @@
 
             <!-- 已實現損益圖表與戰績排行榜區 -->
             <div class="wb-chart-grid" style="margin-bottom: 1rem;">
-                <!-- 獲利標的貢獻佔比圓餅圖 -->
+                <!-- 獲利/虧損/盈虧對比 複合圓餅圖 -->
                 <div class="wb-chart-card">
-                    <div class="wb-section-title">
-                        <span>🥧 已實現獲利貢獻佔比 (前大獲利標的)</span>
-                        <span id="pnlTotalProfitBadge" class="wb-tag stock">獲利總和: +$0</span>
+                    <div class="wb-section-title" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span id="pnlPieCardTitle" style="font-weight:700;">🏆 已實現獲利標的分佈</span>
+                            <span id="pnlTotalProfitBadge" class="wb-tag stock">獲利總和: +$0</span>
+                        </div>
+                        <div class="wb-pill-group" id="pnlPieTypeGroup">
+                            <button type="button" class="wb-pill-btn active" onclick="app.setPnlPieType('profit')"
+                                data-pie-type="profit">🏆 獲利標的</button>
+                            <button type="button" class="wb-pill-btn" onclick="app.setPnlPieType('loss')"
+                                data-pie-type="loss">⚠️ 虧損標的</button>
+                            <button type="button" class="wb-pill-btn" onclick="app.setPnlPieType('comparison')"
+                                data-pie-type="comparison">⚖️ 盈虧總額</button>
+                        </div>
                     </div>
                     <div class="wb-chart-container" style="min-height:240px;">
                         <canvas id="realizedWeightChart"></canvas>
@@ -650,21 +910,25 @@
                 <input type="hidden" id="editSettlementMonth">
                 <div class="wb-form-group">
                     <label class="wb-label">月份期次與基準日</label>
-                    <input type="text" id="editSettlementDateDisplay" class="wb-input" readonly style="opacity:0.8; background:var(--bg-card-hover);">
+                    <input type="text" id="editSettlementDateDisplay" class="wb-input" readonly
+                        style="opacity:0.8; background:var(--bg-card-hover);">
                 </div>
                 <div class="wb-form-group">
                     <label class="wb-label">純銀行存款總額 (TWD) <span style="color:var(--danger)">*</span></label>
-                    <input type="number" id="editSettlementBank" class="wb-input" placeholder="請輸入純存款折合台幣總額" required oninput="app.updateSettlementTotalPreview()">
+                    <input type="number" id="editSettlementBank" class="wb-input" placeholder="請輸入純存款折合台幣總額" required
+                        oninput="app.updateSettlementTotalPreview()">
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">排除股票科目之真實存款總和</div>
                 </div>
                 <div class="wb-form-group">
                     <label class="wb-label">月末持股市值 (TWD) <span style="color:var(--danger)">*</span></label>
-                    <input type="number" id="editSettlementStock" class="wb-input" placeholder="請輸入月末持股現值" required oninput="app.updateSettlementTotalPreview()">
+                    <input type="number" id="editSettlementStock" class="wb-input" placeholder="請輸入月末持股現值" required
+                        oninput="app.updateSettlementTotalPreview()">
                     <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem;">該月末之股票/ETF市值總額</div>
                 </div>
                 <div class="wb-form-group">
                     <label class="wb-label">合計總淨值 (試算)</label>
-                    <div id="editSettlementTotalDisplay" style="font-size:1.15rem; font-weight:700; color:var(--primary); padding:0.4rem 0;">$0</div>
+                    <div id="editSettlementTotalDisplay"
+                        style="font-size:1.15rem; font-weight:700; color:var(--primary); padding:0.4rem 0;">$0</div>
                 </div>
                 <div class="wb-form-group">
                     <label class="wb-label">微調原因 / 備註</label>
@@ -672,12 +936,14 @@
                 </div>
             </div>
             <div class="wb-modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
-                <button type="button" class="wb-btn sm" id="btnResetSettlement" onclick="app.resetSettlementEdit()" title="清除手動覆寫標記，恢復系統預設自動結算">
+                <button type="button" class="wb-btn sm" id="btnResetSettlement" onclick="app.resetSettlementEdit()"
+                    title="清除手動覆寫標記，恢復系統預設自動結算">
                     ↩️ 還原為自動計算
                 </button>
                 <div style="display:flex; gap:0.5rem;">
                     <button type="button" class="wb-btn sm" onclick="app.closeSettlementEditModal()">取消</button>
-                    <button type="button" class="wb-btn sm primary" onclick="app.saveSettlementEdit()">💾 儲存並更新圖表</button>
+                    <button type="button" class="wb-btn sm primary" onclick="app.saveSettlementEdit()">💾
+                        儲存並更新圖表</button>
                 </div>
             </div>
         </div>
