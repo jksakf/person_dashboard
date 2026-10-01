@@ -496,6 +496,87 @@
 - **單元測試套件**：`tests/test_workbench_engine.js` 10 大核心測試 100% 通過。
 - **編碼規範**：`server.js`、`workbench-app.js`、`assets_data.json`、`design_spec.md` 經 Node 驗證 100% 具備 **UTF-8 with BOM**。
 
+---
+
+## 19. 🧹 全系統 Code Review 瘦身與編碼標準化 (v1.9.1)
+
+### 19.1 清理決策紀錄 (Cleanup Decision Log)
+
+| 清理面向 | 目標檔案 | 清理內容與處置 | 效益與防護 |
+| :--- | :--- | :--- | :--- |
+| **1. 前端死碼清除** | `js/workbench-app.js` | • 移除 `onHistoryFilterChange()`（舊 `<select>` 事件，現由膠囊按鈕直調 `setHistoryActionFilter`）。<br>• 移除 `backfillHistoricalSnapshots()`（過去遷移時期之 ~130 行非同步回溯迴圈，正式環境已無人調用）。 | 精簡 136 行死碼，避免維護混淆。 |
+| **2. 舊版雙欄樣式消除** | `css/workbench.css` | • 移除舊版雙欄 Prototype 殘留之 `.wb-workspace`, `.wb-sidebar`, `.wb-module-tabs`, `.wb-record-list`, `.wb-record-card`, `.wb-main-report-pane` 等規則。<br>• 移除廢棄的 `.wb-batch-table` 與 `.wb-calc-badge`、`.wb-alert-box`。 | 精簡 198 行廢棄 CSS，提升瀏覽器樣式解析速度。 |
+| **3. 重複宣告消除** | `js/core/data-converter.js` | • 合併並移除重複宣告兩次之 `createUtf8BomBlob` 靜態工具方法，統一保留單一標準實作。 | 消除語法層次覆寫風險。 |
+| **4. 註解編碼修復** | `js/core/storage-service.js` | • 將開頭與函式 JSDoc 亂碼還原為標準繁體中文註解，保留全部 IndexedDB 與 LocalStorage 回退邏輯。 | 代碼可讀性與工程維護性提升。 |
+| **5. 全域 BOM 標準化** | 全核心 11 個檔案 | • 強制為 `workbench.css` 與 `workbench-engine.js` 等補齊標準 UTF-8 BOM 標記 (`0xEF, 0xBB, 0xBF`)。 | 確保 Windows PowerShell 5.1 讀寫無亂碼。 |
+
+### 19.2 驗證結果
+- **金融單元測試**：`tests/test_workbench_engine.js` 10/10 測試 **100% 通過**（FIFO 先進先出、持股回溯、整數分攤無任何偏移）。
+- **HTTP 服務端點檢驗**：靜態檔案與 API 請求全數返回 `HTTP 200 OK`。
+- **全域編碼檢驗**：11 個專案檔案全部為 **UTF-8 with BOM**。
+
+---
+
+## 20. 🏆 專業產品開發與金融視角全方位評審白皮書 (v2.0 藍圖)
+
+### 20.1 核心亮點與優勢 (Strengths)
+1. **機構級 FIFO 先進先出批次對齊**：徹底消除券商 2 股與 98 股零股尾數四捨五入落差，損益計算與真實對帳單 $1 元不差。
+2. **絕對資料主權 (Local-First)**：無外部依賴、純本地運作、零 SaaS 倒閉與隱私外洩風險。
+3. **水庫防守線模型 (Reservoir Financial Defense)**：以扣除負債後的「實質淨流動現金」取代傳統單純資產-負債之虛假安全感，並於赤字時滿載 100% 深紅警戒。
+4. **月度結算快照與手動覆寫 (isManualOverride)**：尊重真實歷史基準日數值，不因盤中即時波動漂移。
+
+### 20.2 關鍵痛點與改善藍圖 (Kaizen Roadmap)
+
+| 優先級 | 改善模組 | 規劃目標與功能描述 |
+| :--- | :--- | :--- |
+| **P0 (優先)** | **交割戶自動連動扣款** | • 新增/編輯股票交易時，可勾選「連動扣除指定證券交割戶餘額」，消除「買進股票但銀行存款未扣除」的雙重計價盲區，達成資金流閉環。 |
+| **P0 (優先)** | **現金股利/配息追蹤** | • 支援台股/ETF 之「現金股利」與「股票股利」專屬記錄，自動累計「持倉累積已領息收」，精準計算「含息總報酬率」。 |
+| **P1 (進階)** | **XIRR 內部年化報酬率** | • 透過 Newton-Raphson 演算法，將不定期加減碼納入折現考量，產出真正的「年化複合報酬率 (XIRR)」，支援與大盤基準 (如 0050) 真實對比。 |
+| **P1 (進階)** | **資產集中度與風險儀表板** | • 單一持股集中度監控 (>30% 預警)、科技/高波動類股曝險監控、動態現金跑道 (純現金支撐月數)。 |
+| **P2 (擴展)** | **前端代碼微模組化** | • 在無打包工具前提下，利用原生 `<script type="module">` 將各視圖分離獨立維護。 |
+
+
+---
+
+## 21. 🚀 一鍵雙擊背景啟動器與即時現價閉環 (v1.9.2)
+
+### 21.1 決策紀錄 (Decision Log)
+
+| 決策項目 | 決策方案 | 評估考量與採納原因 |
+| :--- | :--- | :--- |
+| **1. 啟動入口機制** | **建立根目錄 `Start-Workbench.bat`** | • 解決使用者以 `file:///` 開啟網頁導致「⚡ 更新現價」受瀏覽器跨域 (CORS) 阻擋的問題。<br>• 雙擊一鍵自動檢測環境、在背景靜默拉起 Node.js 微服務並自動喚起預設瀏覽器。 |
+| **2. 終端黑視窗控制** | **選項 A：完全隱藏黑視窗 (Hidden Window)** | • 透過 PowerShell `Start-Process node -WindowStyle Hidden` 背景託管運行。<br>• 桌面保持極簡乾淨，無殘留黑視窗干擾。 |
+| **3. 防重複啟動 (Idempotency)** | **TCP Port 8080 預檢機制** | • 啟動前以 TCP Socket 測試 `127.0.0.1:8080` 是否已有服務運行。<br>• 若已有服務，直接喚起瀏覽器網址，嚴防重複啟動造成連接埠衝突或佔用記憶體。 |
+| **4. 替代方案捨棄原因** | **捨棄 VBScript 外殼 / 捨棄開機排程常駐** | • **VBScript**：需額外建立 `.vbs` 腳本，增加檔案複雜度（違反 YAGNI 原則）。<br>• **開機排程常駐**：增加系統負擔與權限管理成本，手動雙擊即用更符合本地資料隱私掌控。 |
+
+### 21.2 規格定義
+* **目標檔案**：`Start-Workbench.bat`（專案根目錄）
+* **編碼標準**：UTF-8 with BOM
+* **服務網址**：`http://localhost:8080/workbench.html`
+
+---
+
+## 22. 💾 全自動實體磁碟雙向同步與原子化安全備份 (v1.9.3)
+
+### 22.1 決策紀錄 (Decision Log)
+
+| 決策項目 | 決策方案 | 評估考量與採納原因 |
+| :--- | :--- | :--- |
+| **1. 同步端點架構** | **單一全域端點 `POST /api/save-all-data`** | • 避免分模組存檔產生多端點競態寫入（Race Condition）。<br>• 前端 `saveData()` 於防抖延遲（300ms）後將最新資料模型一次性全量寫入，保證資料狀態 100% 完整一致。 |
+| **2. 安全備份機制** | **寫入前自動生成 `assets_data.backup.json`** | • 覆寫實體檔案前先複製上一個版本，提供磁碟層級的誤刪/損毀還原點。 |
+| **3. 原子化寫入機制** | **暫存檔原子替換 (`assets_data.json.tmp` ➔ rename)** | • 透過作業系統原生檔案更名保證原子性，徹底消除寫入中斷造成的 JSON 解析崩潰。 |
+| **4. 狀態回饋可視化** | **頂部 Header 同步徽章 (Sync Badge)** | • 視覺化顯示 `🟢 已同步磁碟`、`⏳ 同步中...` 或 `⚠️ 離線快取模式`，提供使用者明確的心理安全感。 |
+| **5. 編碼標準規範** | **強制 UTF-8 with BOM** | • 後端寫入時注入 `0xEF, 0xBB, 0xBF`，確保 Windows PowerShell 5.1 讀取繁體中文字串不發生亂碼。 |
+
+### 22.2 規格定義
+* **核心檔案**：`server.js`、`js/workbench-app.js`、`workbench.html`
+* **備份路徑**：`assets_data.backup.json`
+* **資料庫路徑**：`assets_data.json` (單一真理來源，UTF-8 with BOM)
+
+
+
+
+
 
 
 

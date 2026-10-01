@@ -70,8 +70,33 @@ class WorkbenchApp {
         await this.loadData();
         this.initDatalists();
         this.bindEvents();
+        this.updateInitialSyncStatus();
+        this.startHeartbeat();
         this.switchView('overview');
         this.showToast('資產工作台 v1.3 就緒 (獨立全寬度視圖模式)', 'success');
+    }
+
+    // ==========================================
+    // 網頁活躍心跳續約 (與本地 Node 服務保持連線)
+    // ==========================================
+    startHeartbeat() {
+        const baseUrl = this.getApiBaseUrl();
+        const sendBeat = () => {
+            try {
+                fetch(`${baseUrl}/api/heartbeat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    keepalive: true
+                }).catch(() => {});
+            } catch (e) {}
+        };
+
+        // 立即發送第一次心跳
+        sendBeat();
+
+        // 每 5 秒定期心跳續約 (伺服器無心跳 30 秒自動退出)
+        if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        this.heartbeatInterval = setInterval(sendBeat, 5000);
     }
 
     initTheme() {
@@ -1743,13 +1768,6 @@ class WorkbenchApp {
         this.renderHistoryTable();
     }
 
-    onHistoryFilterChange() {
-        const select = document.getElementById('historyActionFilter');
-        if (select) {
-            this.setHistoryActionFilter(select.value);
-        }
-    }
-
     onHistoryMarketFilterChange(val) {
         this.historyMarketFilter = val || 'ALL';
         this.renderHistoryTable();
@@ -3017,9 +3035,60 @@ class WorkbenchApp {
                     localStorage.setItem('assets_data', jsonStr);
                 }
             } catch { }
+
+            // 自動雙向同步至後端實體磁碟 (assets_data.json)
+            await this.syncToDisk();
         } catch (e) {
             console.error('儲存失敗:', e);
             this.showToast('本地儲存失敗: ' + (e.message || e), 'danger');
+        }
+    }
+
+    updateInitialSyncStatus() {
+        const isFile = window.location.protocol === 'file:';
+        if (isFile) {
+            this.setSyncBadge('offline', '⚠️ 本地快取模式', '目前以 file:/// 開啟，資料僅存於瀏覽器快取；請使用 Start-Workbench.bat 啟用磁碟同步');
+        } else {
+            const timeStr = this.data?.meta?.lastUpdated ? new Date(this.data.meta.lastUpdated).toLocaleTimeString('zh-TW', { hour12: false }) : '';
+            this.setSyncBadge('online', `🟢 已同步磁碟${timeStr ? ` (${timeStr})` : ''}`, '本機微服務已連線，所有異動均即時安全寫入 assets_data.json');
+        }
+    }
+
+    setSyncBadge(status, text, title) {
+        const badge = document.getElementById('syncStatusBadge');
+        if (!badge) return;
+        badge.className = `wb-sync-badge-pill ${status}`;
+        const textEl = badge.querySelector('.sync-text');
+        if (textEl) textEl.textContent = text;
+        if (title) badge.title = title;
+    }
+
+    async syncToDisk() {
+        const baseUrl = this.getApiBaseUrl();
+        this.setSyncBadge('syncing', '⏳ 同步寫入中...', '正在將異動資料原子化寫入磁碟 assets_data.json');
+
+        try {
+            const res = await fetch(`${baseUrl}/api/save-all-data`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify(this.data)
+            });
+
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            if (json.success) {
+                const nowStr = new Date().toLocaleTimeString('zh-TW', { hour12: false });
+                this.setSyncBadge('online', `🟢 已同步磁碟 (${nowStr})`, '已成功寫入 assets_data.json，並自動備份至 assets_data.backup.json');
+            } else {
+                throw new Error(json.error || '磁碟寫入異常');
+            }
+        } catch (err) {
+            const isFile = window.location.protocol === 'file:';
+            if (isFile) {
+                this.setSyncBadge('offline', '⚠️ 本地快取模式', '目前以 file:/// 瀏覽，僅儲存於瀏覽器 IndexedDB，請執行 Start-Workbench.bat 啟動磁碟自動同步');
+            } else {
+                this.setSyncBadge('error', '⚠️ 磁碟同步失敗', `寫入實體磁碟失敗: ${err.message} (已保存在本地 IndexedDB)`);
+            }
         }
     }
 
@@ -3457,133 +3526,6 @@ class WorkbenchApp {
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '⚡ 更新現價';
-            }
-        }
-    }
-
-    async backfillHistoricalSnapshots() {
-        const btn = document.getElementById('btnBackfillSnapshots');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '⏳ 歷史補齊中...';
-        }
-
-        const baseUrl = this.getApiBaseUrl();
-
-        try {
-            // 找出所有歷史月份 (排除當前最新月) 與各月份真實銀行對帳日、純存款與股票留存估值
-            const monthlyBank = {};
-            const monthlyStockLegacy = {};
-            const monthlyReconDate = {};
-            (this.data.bankAssets || []).forEach(b => {
-                const m = (b.date || '').slice(0, 7);
-                if (!m) return;
-                // 記錄該月份在 bankAssets 中的真實對帳日期 (例如 2026/05/08)
-                if (!monthlyReconDate[m] || b.date > monthlyReconDate[m]) {
-                    monthlyReconDate[m] = b.date;
-                }
-                const amt = parseFloat(b.twdAmount) || parseFloat(b.originalAmount) || 0;
-                const isStockAcc = b.bankName && (b.bankName.includes('股票') || b.bankName.includes('ETF'));
-                if (isStockAcc) {
-                    monthlyStockLegacy[m] = (monthlyStockLegacy[m] || 0) + amt;
-                } else {
-                    monthlyBank[m] = (monthlyBank[m] || 0) + amt;
-                }
-            });
-
-            const sortedMonths = Object.keys(monthlyBank).sort();
-            if (sortedMonths.length <= 1) {
-                this.showToast('目前歷史期次不足，無需補齊快照', 'info');
-                return;
-            }
-
-            const pastMonths = sortedMonths.slice(0, sortedMonths.length - 1);
-            this.data.monthlySnapshots = this.data.monthlySnapshots || {};
-            const newSnapshots = {};
-            let processedMonths = 0;
-
-            for (const m of pastMonths) {
-                // 取得該月具體銀行對帳日 (消除時間差盲區)
-                const reconDate = monthlyReconDate[m] || (m + '-31');
-                const bankTotal = monthlyBank[m] || 0;
-
-                // 若舊系統留存有記錄股票估值，優先 100% 採用舊留存值，徹底杜絕落差
-                let stockTotal = 0;
-                if (monthlyStockLegacy[m] != null && monthlyStockLegacy[m] > 0) {
-                    stockTotal = monthlyStockLegacy[m];
-                } else {
-                    // 若無留存紀錄，則以對帳日持股與收盤價回溯推算
-                    const hist = this.engine.computeHoldingsAtDate(this.data.transactions || [], reconDate);
-                    const priceMap = {};
-                    for (const h of hist.holdings) {
-                        try {
-                            const res = await fetch(`${baseUrl}/api/stock-price/historical?symbol=${encodeURIComponent(h.symbol)}&month=${encodeURIComponent(m)}`);
-                            if (res.ok) {
-                                const j = await res.json();
-                                if (j.success && j.data && j.data.closePrice) {
-                                    priceMap[h.symbol] = j.data.closePrice;
-                                }
-                            }
-                        } catch (e) { }
-                    }
-                    const reval = this.engine.computeHoldingsAtDate(this.data.transactions || [], reconDate, priceMap);
-                    stockTotal = reval.totalMarketValue;
-                }
-
-                const netWorth = bankTotal + stockTotal;
-                const histDetails = this.engine.computeHoldingsAtDate(this.data.transactions || [], reconDate);
-
-                newSnapshots[m] = {
-                    month: m,
-                    date: reconDate,
-                    bankTotal: bankTotal,
-                    stockTotal: stockTotal,
-                    totalNetWorth: netWorth,
-                    holdings: histDetails.holdings.map(h => ({
-                        symbol: h.symbol,
-                        name: h.name,
-                        currency: h.currency || 'TWD',
-                        exchangeRate: h.exchangeRate || 1.0,
-                        shares: h.shares,
-                        closePrice: h.evalPrice || h.currentPrice,
-                        marketValue: h.marketValue,
-                        marketValueOriginal: h.marketValueOriginal || h.marketValue
-                    })),
-                    updatedAt: new Date().toISOString()
-                };
-                processedMonths++;
-            }
-
-            // 本地合併快照
-            Object.assign(this.data.monthlySnapshots, newSnapshots);
-            await this.saveData();
-
-            // 同步寫入後端 server assets_data.json
-            try {
-                await fetch(`${baseUrl}/api/save-snapshots`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ snapshots: newSnapshots })
-                });
-            } catch (postErr) {
-                console.warn('同步後端 save-snapshots 失敗 (已在本地 IndexedDB 保存):', postErr);
-            }
-
-            this.renderCharts();
-            this.renderMetrics();
-            this.showToast(`🎉 成功完成 ${processedMonths} 個歷史月份持股市值快照補齊！`, 'success');
-        } catch (err) {
-            console.error('補齊歷史快照失敗:', err);
-            const isFile = window.location.protocol === 'file:';
-            if (isFile) {
-                this.showToast('⚠️ 目前為直接開啟檔案模式 (file:///)，請執行 Start-Workbench.bat 啟動服務，或直接前往 http://127.0.0.1:8080/workbench.html', 'warning', 7000);
-            } else {
-                this.showToast(`補齊歷史快照失敗: ${err.message}`, 'error');
-            }
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '🔄 補齊歷史月份市值';
             }
         }
     }

@@ -1,0 +1,25 @@
+# ============================================================
+# Git Ignore Rules for Personal Asset Workbench
+# ============================================================
+
+# 系統暫存與快取檔
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# 編輯器與 IDE 設定檔
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 執行期間產生的日誌與暫存檔
+logs/
+*.log
+*.tmp
+*.backup.json
+
+# 敏感設定檔
+config.local.json

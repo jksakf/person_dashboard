@@ -156,31 +156,35 @@
 
 ```text
 person_dashboard/
-├── workbench.html              # 主工作台單頁應用 (SPA 結構與佈局)
-├── server.js                   # 原生 Node.js 地端微服務 (API 轉接 ＋ 磁碟原子化寫入)
-├── assets_data.json            # 核心資料庫 (單一真理來源，UTF-8 with BOM)
-├── design_spec.md              # 系統演進規格與全量決策紀錄 (Decision Log v1.0~v1.9)
+├── .gitignore                  # Git 忽略規則 (排除暫存、日誌與編輯器設定)
+├── README.md                   # 專案總說明文件 (v1.9.0)
+├── design_spec.md              # 系統架構規格書與決策紀錄 (v1.0~v1.9)
 ├── Optimization_Roadmap.md     # 效能優化與架構演進藍圖
-├── Start-Workbench.bat         # Windows 一鍵快速啟動腳本
+├── assets_data.json            # 核心資料庫 (單一真理來源，UTF-8 with BOM)
+├── assets_data.backup.json     # 原子儲存安全自動備份檔
+├── account_list.txt            # 銀行帳戶常用下拉清單
+├── stock_list.txt              # 股票代號常用下拉清單
+├── Start-Workbench.vbs         # 零黑窗極簡啟動器 (Windows 靜默背景載入)
+├── Start-Workbench.bat         # 備用啟動批次檔 (無 BOM 相容版)
+├── Stop-Workbench.bat          # 一鍵停止背景服務釋放 Port 8080
+├── server.js                   # 原生 Node.js 地端微服務 (含 30 秒無心跳自動終止)
+├── workbench.html              # 主工作台單頁應用 (SPA 結構與佈局)
 │
 ├── css/
 │   └── workbench.css           # 現代暗黑玻璃擬態設計系統 (CSS 變數、Flexbox、Grid)
 │
 ├── js/
-│   ├── workbench-app.js        # 前端主控制器 (DOM 事件、視圖渲染、抽屜互動)
+│   ├── workbench-app.js        # 前端主控制器 (DOM 事件、視圖渲染、心跳續約)
 │   └── core/
 │       ├── workbench-engine.js # 純金融核心計算引擎 (FIFO、稅費、歷史回溯)
-│       ├── storage-service.js  # IndexedDB 非同步持久化服務
+│       ├── storage-service.js  # 本地持久化與快取服務
 │       └── data-converter.js   # 歷史 CSV 與資料模型轉換工具
-│
-├── scripts/
-│   └── Start-Workbench.ps1     # 現代化 PowerShell 控制台啟動程序 (含彩色菜單)
 │
 ├── tests/
 │   └── test_workbench_engine.js# 10 大金融運算核心單元測試套件
 │
-└── archive/                    # 歷史舊系統與原始資料備份歸檔
-    └── legacy_system/          # 舊版 PowerShell 模組與 CSV 紀錄
+└── archive/                    # 歷史舊系統封存歸檔
+    └── legacy_system/          # 舊版 PowerShell 模組、舊選單與 CSV 紀錄
 ```
 
 ---
@@ -190,20 +194,16 @@ person_dashboard/
 ### 環境需求
 
 * **作業系統**：Windows 10 / 11（繁體中文環境）
-* **執行環境**：Node.js v16.0.0 以上 或 PowerShell 5.1
+* **執行環境**：Node.js v16.0.0 以上
 
 ### 一鍵啟動方式
 
-雙擊專案根目錄的 **`Start-Workbench.bat`**，或在 PowerShell 中執行：
-
-```powershell
-.\scripts\Start-Workbench.ps1
-```
-
-腳本將自動：
-
-1. 檢測環境並在背景啟動 Node.js 微服務（監聽 `http://127.0.0.1:8080`）。
-2. 自動開啟預設瀏覽器進入工作台頁面。
+* **🚀 日常極簡無痕啟動（推薦）**：
+  直接雙擊專案根目錄的 **`Start-Workbench.vbs`**。完全不彈出黑底命令提示字元視窗，純背景喚醒 Node.js 並自動開啟瀏覽器。
+* **⚡ 備用命令列啟動**：
+  雙擊 **`Start-Workbench.bat`**。
+* **🛑 停止背景服務**：
+  關閉所有工作台網頁分頁後，背景伺服器將在 **30 秒**後自動釋放 Port 8080 並安全退場；亦可隨時點擊 **`Stop-Workbench.bat`** 立即強制停止。
 
 直接於瀏覽器造訪：
 👉 **`http://127.0.0.1:8080/workbench.html`**

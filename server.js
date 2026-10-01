@@ -237,6 +237,68 @@ function saveBankAssets(bankAssets) {
     return bankAssets.length;
 }
 
+// 5. 全量原子化儲存 assets_data.json (含安全備份與 UTF-8 BOM)
+const ASSETS_DATA_BACKUP_FILE = path.join(ROOT_DIR, 'assets_data.backup.json');
+const ASSETS_DATA_TMP_FILE = path.join(ROOT_DIR, 'assets_data.json.tmp');
+
+function saveAllData(newData) {
+    if (!newData || typeof newData !== 'object') {
+        throw new Error('無效的資料格式');
+    }
+
+    // 防呆校驗：確保核心欄位齊全，嚴防被意外覆寫為空
+    if (!Array.isArray(newData.transactions) || !Array.isArray(newData.bankAssets)) {
+        throw new Error('資料結構不完整，缺少 transactions 或 bankAssets 陣列');
+    }
+
+    // 1. 若既有檔案存在，先建立安全備份 assets_data.backup.json
+    if (fs.existsSync(ASSETS_DATA_FILE)) {
+        try {
+            fs.copyFileSync(ASSETS_DATA_FILE, ASSETS_DATA_BACKUP_FILE);
+        } catch (backupErr) {
+            console.warn('[server.js] 建立備份檔失敗:', backupErr.message);
+        }
+    }
+
+    // 2. 更新元數據最後修改時間
+    newData.meta = newData.meta || {};
+    newData.meta.lastUpdated = new Date().toISOString();
+
+    // 3. 序列化並注入 UTF-8 BOM
+    const jsonStr = JSON.stringify(newData, null, 2);
+    const bom = Buffer.from([0xEF, 0xBB, 0xBF]);
+    const finalBuffer = Buffer.concat([bom, Buffer.from(jsonStr, 'utf8')]);
+
+    // 4. 原子化寫入：先寫入 .tmp 再 rename 覆蓋
+    fs.writeFileSync(ASSETS_DATA_TMP_FILE, finalBuffer);
+    fs.renameSync(ASSETS_DATA_TMP_FILE, ASSETS_DATA_FILE);
+
+    return {
+        transactionsCount: newData.transactions.length,
+        bankAssetsCount: newData.bankAssets.length,
+        timestamp: newData.meta.lastUpdated
+    };
+}
+
+// ==========================================
+// 30 秒無心跳自動終止守護邏輯 (Graceful Auto-Shutdown)
+// ==========================================
+const INACTIVITY_TIMEOUT_MS = 30 * 1000;
+let inactivityTimer = null;
+
+function resetInactivityTimer() {
+    if (inactivityTimer) {
+        clearTimeout(inactivityTimer);
+    }
+    inactivityTimer = setTimeout(() => {
+        console.log(`[server.js] 已超過 ${INACTIVITY_TIMEOUT_MS / 1000} 秒未收到網頁心跳，自動安全關閉服務 (PID: ${process.pid})...`);
+        process.exit(0);
+    }, INACTIVITY_TIMEOUT_MS);
+}
+
+// 伺服器啟動時即開啟初始保護計時器
+resetInactivityTimer();
+
 // 建立 HTTP 伺服器
 const server = http.createServer(async (req, res) => {
     const parsedUrl = url.parse(req.url, true);
@@ -256,6 +318,14 @@ const server = http.createServer(async (req, res) => {
         }
 
         try {
+            // API 0: POST/GET /api/heartbeat (前端網頁心跳續約)
+            if (pathname === '/api/heartbeat') {
+                resetInactivityTimer();
+                res.writeHead(200);
+                res.end(JSON.stringify({ success: true, timestamp: Date.now(), pid: process.pid }));
+                return;
+            }
+
             // API 1: GET /api/stock-price/realtime?symbols=2330,2454
             if (pathname === '/api/stock-price/realtime' && req.method === 'GET') {
                 const syms = (parsedUrl.query.symbols || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -316,6 +386,28 @@ const server = http.createServer(async (req, res) => {
                         const savedCount = saveBankAssets(bankAssets);
                         res.writeHead(200);
                         res.end(JSON.stringify({ success: true, count: savedCount, message: `成功同步 ${savedCount} 筆銀行帳戶至 assets_data.json` }));
+                    } catch (err) {
+                        res.writeHead(500);
+                        res.end(JSON.stringify({ success: false, error: err.message }));
+                    }
+                });
+                return;
+            }
+
+            // API 5: POST /api/save-all-data
+            if (pathname === '/api/save-all-data' && req.method === 'POST') {
+                let body = '';
+                req.on('data', chunk => body += chunk);
+                req.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(body);
+                        const result = saveAllData(parsed);
+                        res.writeHead(200);
+                        res.end(JSON.stringify({
+                            success: true,
+                            message: '已全量同步寫入實體磁碟 (含 assets_data.backup.json 備份)',
+                            result: result
+                        }));
                     } catch (err) {
                         res.writeHead(500);
                         res.end(JSON.stringify({ success: false, error: err.message }));

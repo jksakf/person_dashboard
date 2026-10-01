@@ -209,12 +209,12 @@ class DataConverter {
     }
 
     /**
-     * 產出包含 UTF-8 BOM 的 Blob，確保 Windows Excel 開啟不會亂碼
+     * 產出包含 UTF-8 BOM 的 Blob，確保 Windows Excel 或記事本開啟不會亂碼
      * @param {string} content 
      * @param {string} mimeType 
      * @returns {Blob}
      */
-    static createUtf8BomBlob(content, mimeType = 'text/csv;charset=utf-8') {
+    static createUtf8BomBlob(content, mimeType = 'text/plain;charset=utf-8') {
         const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
         return new Blob([bom, content], { type: mimeType });
     }
@@ -267,17 +267,6 @@ class DataConverter {
             lines.push(row.map(val => `"${val}"`).join(','));
         }
         return lines.join('\r\n');
-    }
-
-    /**
-     * 建立帶有 UTF-8 BOM 的 Blob
-     * @param {string} content 
-     * @param {string} mimeType 
-     * @returns {Blob}
-     */
-    static createUtf8BomBlob(content, mimeType = 'text/plain;charset=utf-8') {
-        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-        return new Blob([bom, content], { type: mimeType });
     }
 
     /**

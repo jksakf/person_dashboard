@@ -1,14 +1,135 @@
 ﻿{
   "bankAssets": [
     {
-      "id": "bank_1790586157600_722",
-      "date": "2026/09/01",
+      "id": "bank_1790783608294_998",
+      "date": "2026/09/30",
       "bankName": "富邦",
       "accountType": "活存",
       "currency": "TWD",
-      "originalAmount": 100000,
+      "originalAmount": 70722,
       "exchangeRate": 1,
-      "twdAmount": 100000,
+      "twdAmount": 70722,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_974",
+      "date": "2026/09/30",
+      "bankName": "元大CMA",
+      "accountType": "證券交割",
+      "currency": "TWD",
+      "originalAmount": 29732,
+      "exchangeRate": 1,
+      "twdAmount": 29732,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_655",
+      "date": "2026/09/30",
+      "bankName": "元大",
+      "accountType": "活存",
+      "currency": "TWD",
+      "originalAmount": 0,
+      "exchangeRate": 1,
+      "twdAmount": 0,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_569",
+      "date": "2026/09/30",
+      "bankName": "國泰證券交割戶",
+      "accountType": "證券交割",
+      "currency": "TWD",
+      "originalAmount": 30000,
+      "exchangeRate": 1,
+      "twdAmount": 30000,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_643",
+      "date": "2026/09/30",
+      "bankName": "將來",
+      "accountType": "活存",
+      "currency": "TWD",
+      "originalAmount": 8130,
+      "exchangeRate": 1,
+      "twdAmount": 8130,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_885",
+      "date": "2026/09/30",
+      "bankName": "台新Richart",
+      "accountType": "活存",
+      "currency": "TWD",
+      "originalAmount": 8899,
+      "exchangeRate": 1,
+      "twdAmount": 8899,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_209",
+      "date": "2026/09/30",
+      "bankName": "ipass",
+      "accountType": "活存",
+      "currency": "TWD",
+      "originalAmount": 171,
+      "exchangeRate": 1,
+      "twdAmount": 171,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_855",
+      "date": "2026/09/30",
+      "bankName": "國泰(青年子帳戶)",
+      "accountType": "活存",
+      "currency": "TWD",
+      "originalAmount": 95,
+      "exchangeRate": 1,
+      "twdAmount": 95,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_613",
+      "date": "2026/09/30",
+      "bankName": "休閒金",
+      "accountType": "活存",
+      "currency": "TWD",
+      "originalAmount": 1500,
+      "exchangeRate": 1,
+      "twdAmount": 1500,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783608294_586",
+      "date": "2026/09/30",
+      "bankName": "LINEPAY",
+      "accountType": "活存",
+      "currency": "TWD",
+      "originalAmount": 495,
+      "exchangeRate": 1,
+      "twdAmount": 495,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783607798_248",
+      "date": "2026/09/30",
+      "bankName": "富邦信用卡(負債)",
+      "accountType": "負債",
+      "currency": "TWD",
+      "originalAmount": -4229,
+      "exchangeRate": 1,
+      "twdAmount": -4229,
+      "note": ""
+    },
+    {
+      "id": "bank_1790783607798_206",
+      "date": "2026/09/30",
+      "bankName": "台新信用卡(負債)",
+      "accountType": "負債",
+      "currency": "TWD",
+      "originalAmount": -34417,
+      "exchangeRate": 1,
+      "twdAmount": -34417,
       "note": ""
     },
     {
@@ -1289,6 +1410,38 @@
     }
   ],
   "transactions": [
+    {
+      "id": "tx_1790784750729_877",
+      "date": "2026/07/07",
+      "symbol": "6451",
+      "name": "訊芯-KY",
+      "action": "買入",
+      "price": 503,
+      "shares": 200,
+      "fee": 86,
+      "tax": 0,
+      "totalAmount": 100686,
+      "currency": "TWD",
+      "exchangeRate": 1,
+      "netAmountTwd": 100686,
+      "note": ""
+    },
+    {
+      "id": "tx_1790784534746_981",
+      "date": "2026/05/22",
+      "symbol": "6862",
+      "name": "三集瑞-KY",
+      "action": "賣出",
+      "price": 183,
+      "shares": 200,
+      "fee": 14,
+      "tax": 109,
+      "totalAmount": 36477,
+      "currency": "TWD",
+      "exchangeRate": 1,
+      "netAmountTwd": 36477,
+      "note": ""
+    },
     {
       "id": "tx_20240325_001",
       "tax": 0,
@@ -3328,7 +3481,7 @@
       "stockFeeRate": 0.001425,
       "stockTaxRate": 0.003
     },
-    "lastUpdated": "2026-09-28T09:32:51.662Z",
+    "lastUpdated": "2026-10-01T15:01:26.487Z",
     "version": "1.2.1",
     "accountList": [
       "富邦",
@@ -5485,5 +5638,12 @@
       "isManualOverride": true,
       "note": ""
     }
+  },
+  "latestPrices": {
+    "2308": 1905,
+    "4958": 510,
+    "5314": 30.6,
+    "6451": 413,
+    "6862": 138
   }
 }

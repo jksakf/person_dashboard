@@ -8,7 +8,9 @@
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [switch]$Silent
+)
 
 # 設定主控台輸出編碼為 UTF-8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -69,6 +71,11 @@ function Open-Workbench {
 
 # 首次執行自動啟動工作台
 Open-Workbench
+
+# 若為靜默啟動模式，直接離開
+if ($Silent) {
+    exit 0
+}
 
 while ($true) {
     Show-Header

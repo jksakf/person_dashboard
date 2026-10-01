@@ -1,6 +1,7 @@
 ﻿/**
- * ?? IndexedDB ?脣??? (StorageService)
- * ?瑁痊嚗?隞?捆????(5MB) ??LocalStorage嚗?湔??MB ?祆?鞎∪?鞈?摮????祇蝘? * 蝺函Ⅳ嚗TF-8 with BOM
+ * 原生 IndexedDB 儲存服務 (StorageService)
+ * 職責：取代容量受限 (5MB) 的 LocalStorage，支援數十 MB 的大容量資產與交易數據持久化儲存
+ * 編碼：UTF-8 with BOM
  */
 
 class StorageService {
@@ -12,7 +13,7 @@ class StorageService {
     }
 
     /**
-     * ?????? IndexedDB ??? (Promise)
+     * 初始化或獲取 IndexedDB 連線 (Promise)
      */
     async getDb() {
         if (this.db) return this.db;
@@ -20,7 +21,7 @@ class StorageService {
 
         this._initPromise = new Promise((resolve, reject) => {
             if (typeof indexedDB === 'undefined') {
-                return reject(new Error('?嗅??啣?銝??IndexedDB'));
+                return reject(new Error('當前環境不支援 IndexedDB'));
             }
 
             const request = indexedDB.open(this.dbName, 1);
@@ -38,7 +39,7 @@ class StorageService {
             };
 
             request.onerror = (event) => {
-                console.error('?? IndexedDB 憭望?:', event.target.error);
+                console.error('開啟 IndexedDB 失敗:', event.target.error);
                 reject(event.target.error);
             };
         });
@@ -47,7 +48,8 @@ class StorageService {
     }
 
     /**
-     * 霈??潸???     * @param {string} key
+     * 讀取指定鍵值
+     * @param {string} key
      * @returns {Promise<any>}
      */
     async get(key) {
@@ -62,7 +64,7 @@ class StorageService {
                 req.onerror = () => reject(req.error);
             });
         } catch (e) {
-            console.warn(`[StorageService] 霈??${key} 憭望?嚗?閰血? LocalStorage ?:`, e);
+            console.warn(`[StorageService] 讀取 ${key} 失敗，嘗試向 LocalStorage 退避:`, e);
             const fallback = localStorage.getItem(key);
             try {
                 return fallback ? JSON.parse(fallback) : null;
@@ -73,7 +75,8 @@ class StorageService {
     }
 
     /**
-     * 撖怠?萄潸???     * @param {string} key
+     * 寫入指定鍵值
+     * @param {string} key
      * @param {any} value
      * @returns {Promise<void>}
      */
@@ -89,13 +92,14 @@ class StorageService {
                 req.onerror = () => reject(req.error);
             });
         } catch (e) {
-            console.error(`[StorageService] 撖怠 ${key} 憭望?:`, e);
+            console.error(`[StorageService] 寫入 ${key} 失敗:`, e);
             throw e;
         }
     }
 
     /**
-     * ?芷???萄?     * @param {string} key
+     * 刪除指定鍵值
+     * @param {string} key
      */
     async remove(key) {
         try {
@@ -109,12 +113,12 @@ class StorageService {
                 req.onerror = () => reject(req.error);
             });
         } catch (e) {
-            console.error(`[StorageService] ?芷 ${key} 憭望?:`, e);
+            console.error(`[StorageService] 刪除 ${key} 失敗:`, e);
         }
     }
 
     /**
-     * ?芸?瑼Ｘ銝血? LocalStorage ?瑞宏??鞈???IndexedDB
+     * 自動檢查並從 LocalStorage 遷移現有數據至 IndexedDB
      */
     async migrateFromLocalStorage(key) {
         try {
@@ -124,16 +128,16 @@ class StorageService {
                 if (localData) {
                     const parsed = JSON.parse(localData);
                     await this.set(key, parsed);
-                    console.log(`[StorageService] ????LocalStorage ?瑞宏 ${key} ??IndexedDB`);
+                    console.log(`[StorageService] 成功從 LocalStorage 遷移 ${key} 至 IndexedDB`);
                 }
             }
         } catch (e) {
-            console.warn('[StorageService] ?瑞宏瑼Ｘ憭望?:', e);
+            console.warn('[StorageService] 遷移檢查失敗:', e);
         }
     }
 }
 
-// 撱箇??典??桐?
+// 建立全域單例
 if (typeof window !== 'undefined') {
     window.StorageService = StorageService;
     window.appStorage = new StorageService();
@@ -142,4 +146,3 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = { StorageService };
 }
-

@@ -59,6 +59,12 @@
                 <span class="wb-kpi-val" id="topNetWorth">$0</span>
             </div>
 
+            <!-- 自動同步狀態指示膠囊 -->
+            <div class="wb-sync-badge-pill" id="syncStatusBadge" title="本機磁碟 assets_data.json 雙向同步狀態">
+                <span class="sync-dot"></span>
+                <span class="sync-text">🟢 已同步磁碟</span>
+            </div>
+
             <!-- 備份與還原 -->
             <button class="wb-btn sm" onclick="app.exportJson()" title="匯出完整 assets_data.json 備份檔">
                 💾 備份 JSON
