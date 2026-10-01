@@ -390,6 +390,100 @@ class DrawerView {
                 <button class="wb-btn sm danger" onclick="app.deleteCurrentEditing()">🗑️ 刪除紀錄</button>
                 <button class="wb-btn sm primary" onclick="app.saveCurrentEditing()">💾 完成存檔</button>
             </div>`;
+        } else if (this.editingType === 'dailyRecord') {
+            const isNew = !this.data.dailyRecords || !this.data.dailyRecords.some(r => r.id === item.id);
+            if (title) title.textContent = isNew ? '＋ 新增日常記帳' : '✏️ 編輯日常記帳';
+            if (badge) {
+                const typeTexts = { expense: '💸 生活支出', income: '💰 日常收入', transfer: '🔄 帳戶轉帳' };
+                badge.textContent = typeTexts[item.type] || '日常記帳';
+                badge.className = `wb-tag ${item.type === 'expense' ? 'danger' : (item.type === 'income' ? 'success' : 'primary')}`;
+                badge.style = '';
+            }
+
+            const categories = (this.dailyLedgerView && this.dailyLedgerView.categories[item.type]) || ['🍜 飲食', '🚗 交通', '🛍️ 購物', '☕ 飲品點心', '🏠 居住水電', '🎬 休閒娛樂'];
+            let catOptions = '';
+            categories.forEach(c => {
+                catOptions += `<option value="${c}" ${item.category === c ? 'selected' : ''}>${c}</option>`;
+            });
+
+            body.innerHTML = `
+            <div class="wb-form-grid">
+                <div class="wb-form-group">
+                    <label class="wb-label">記帳類型</label>
+                    <select class="wb-select" id="drawer_daily_type" onchange="app.onDailyTypeChange(this.value)">
+                        <option value="expense" ${item.type === 'expense' ? 'selected' : ''}>💸 生活支出</option>
+                        <option value="income" ${item.type === 'income' ? 'selected' : ''}>💰 日常收入</option>
+                        <option value="transfer" ${item.type === 'transfer' ? 'selected' : ''}>🔄 帳戶轉帳</option>
+                    </select>
+                </div>
+
+                <div class="wb-form-group">
+                    <label class="wb-label">記帳日期 (YYYY/MM/DD)</label>
+                    <input type="text" class="wb-input mono" id="drawer_daily_date" value="${item.date || ''}">
+                </div>
+
+                <div class="wb-form-group">
+                    <label class="wb-label">收支類別 (可選或手動輸入)</label>
+                    <input type="text" class="wb-input" id="drawer_daily_cat" list="dailyCatList" value="${item.category || ''}" placeholder="例如: 🍜 飲食">
+                    <datalist id="dailyCatList">
+                        ${catOptions}
+                    </datalist>
+                </div>
+
+                <div class="wb-form-group">
+                    <label class="wb-label">金額 ($) <span style="color:var(--danger)">*</span></label>
+                    <input type="number" step="any" class="wb-input mono" id="drawer_daily_amount" value="${item.amount || ''}" placeholder="請輸入金額" style="font-size:1.15rem; font-weight:700;">
+                </div>
+
+                <div class="wb-form-group" id="group_daily_account">
+                    <label class="wb-label">${item.type === 'income' ? '入帳銀行帳戶' : (item.type === 'transfer' ? '轉出銀行帳戶' : '扣款銀行帳戶')}</label>
+                    <input type="text" class="wb-input" id="drawer_daily_account" list="bankAccountList" value="${item.account || ''}" placeholder="請選擇或輸入帳戶">
+                </div>
+
+                <div class="wb-form-group" id="group_daily_to_account" style="${item.type === 'transfer' ? '' : 'display:none;'}">
+                    <label class="wb-label">轉入銀行帳戶</label>
+                    <input type="text" class="wb-input" id="drawer_daily_to_account" list="bankAccountList" value="${item.toAccount || ''}" placeholder="請選擇轉入帳戶">
+                </div>
+
+                <div class="wb-form-group">
+                    <label class="wb-label">消費備註 / 細項說明</label>
+                    <input type="text" class="wb-input" id="drawer_daily_note" value="${item.note || ''}" placeholder="例如: 聚餐拉麵、加油">
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <button class="wb-btn sm danger" onclick="app.deleteCurrentEditing()">🗑️ 刪除紀錄</button>
+                <button class="wb-btn sm primary" onclick="app.saveCurrentEditing()">💾 完成存檔</button>
+            </div>`;
+        }
+    }
+
+    onDailyTypeChange(type) {
+        if (!this.editingItem || this.editingType !== 'dailyRecord') return;
+        this.editingItem.type = type;
+        const badge = document.getElementById('drawerBadge');
+        if (badge) {
+            const typeTexts = { expense: '💸 生活支出', income: '💰 日常收入', transfer: '🔄 帳戶轉帳' };
+            badge.textContent = typeTexts[type] || '日常記帳';
+            badge.className = `wb-tag ${type === 'expense' ? 'danger' : (type === 'income' ? 'success' : 'primary')}`;
+        }
+        const toAccGroup = document.getElementById('group_daily_to_account');
+        if (toAccGroup) {
+            toAccGroup.style.display = type === 'transfer' ? 'block' : 'none';
+        }
+        const accLabel = document.querySelector('#group_daily_account label');
+        if (accLabel) {
+            accLabel.textContent = type === 'income' ? '入帳銀行帳戶' : (type === 'transfer' ? '轉出銀行帳戶' : '扣款銀行帳戶');
+        }
+        const catInput = document.getElementById('drawer_daily_cat');
+        const catList = document.getElementById('dailyCatList');
+        if (catList && this.dailyLedgerView) {
+            const categories = this.dailyLedgerView.categories[type] || [];
+            let catOptions = '';
+            categories.forEach(c => catOptions += `<option value="${c}">${c}</option>`);
+            catList.innerHTML = catOptions;
+            if (categories.length > 0 && catInput) {
+                catInput.value = categories[0];
+            }
         }
     }
 
@@ -575,6 +669,58 @@ class DrawerView {
             } catch {}
 
             this.showToast(`已儲存銀行帳戶: ${bankName}`, 'success');
+        } else if (this.editingType === 'dailyRecord') {
+            const date = document.getElementById('drawer_daily_date')?.value || this.editingItem.date;
+            const type = document.getElementById('drawer_daily_type')?.value || this.editingItem.type || 'expense';
+            const category = (document.getElementById('drawer_daily_cat')?.value || this.editingItem.category || '').trim();
+            const amount = parseFloat(document.getElementById('drawer_daily_amount')?.value) || 0;
+            const account = (document.getElementById('drawer_daily_account')?.value || this.editingItem.account || '').trim();
+            const toAccount = (document.getElementById('drawer_daily_to_account')?.value || this.editingItem.toAccount || '').trim();
+            const note = document.getElementById('drawer_daily_note')?.value || '';
+
+            if (amount <= 0) {
+                alert('請輸入大於 0 的金額');
+                return;
+            }
+            if (!account) {
+                alert('請選擇或輸入銀行帳戶');
+                return;
+            }
+
+            if (!this.data.dailyRecords) this.data.dailyRecords = [];
+
+            // 若為修改既有紀錄，先還原原本對銀行的影響
+            const existingIdx = this.data.dailyRecords.findIndex(r => r.id === this.editingItem.id);
+            if (existingIdx >= 0) {
+                if (typeof this.applyRecordToBank === 'function') {
+                    this.applyRecordToBank(this.data.dailyRecords[existingIdx], true);
+                } else if (this.dailyLedgerView && typeof this.dailyLedgerView.applyRecordToBank === 'function') {
+                    this.dailyLedgerView.applyRecordToBank(this.data.dailyRecords[existingIdx], true);
+                }
+            }
+
+            this.editingItem.date = date;
+            this.editingItem.type = type;
+            this.editingItem.category = category || (type === 'expense' ? '其他支出' : '其他收入');
+            this.editingItem.amount = amount;
+            this.editingItem.account = account;
+            this.editingItem.toAccount = toAccount;
+            this.editingItem.note = note;
+
+            // 套用新的銀行帳戶影響
+            if (typeof this.applyRecordToBank === 'function') {
+                this.applyRecordToBank(this.editingItem, false);
+            } else if (this.dailyLedgerView && typeof this.dailyLedgerView.applyRecordToBank === 'function') {
+                this.dailyLedgerView.applyRecordToBank(this.editingItem, false);
+            }
+
+            if (existingIdx >= 0) {
+                this.data.dailyRecords[existingIdx] = this.editingItem;
+            } else {
+                this.data.dailyRecords.unshift(this.editingItem);
+            }
+
+            this.showToast(`🎉 已記錄: ${this.editingItem.category} $${Math.round(amount).toLocaleString()}，帳戶已即時連動！`, 'success');
         }
 
         this.initDatalists();
@@ -590,9 +736,12 @@ class DrawerView {
         if (this.editingType === 'transaction') {
             this.data.transactions = this.data.transactions.filter(t => t.id !== this.editingItem.id);
             this.showToast('已刪除交易紀錄', 'info');
-        } else if (this.editingType === 'bankAsset') {
-            this.data.bankAssets = this.data.bankAssets.filter(b => b.id !== this.editingItem.id);
-            this.showToast('已刪除銀行資產', 'info');
+        } else if (this.editingType === 'dailyRecord') {
+            if (this.dailyLedgerView) {
+                this.dailyLedgerView.deleteDailyRecord(this.editingItem.id);
+            }
+            this.closeDrawer();
+            return;
         }
 
         this.scheduleAutoSave();

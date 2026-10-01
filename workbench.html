@@ -49,6 +49,9 @@
                 <button class="wb-nav-tab" data-view="pnl" onclick="app.switchView('pnl')">
                     💸 已實現損益
                 </button>
+                <button class="wb-nav-tab" data-view="daily" onclick="app.switchView('daily')">
+                    📅 天天記帳
+                </button>
             </nav>
         </div>
 
@@ -801,6 +804,77 @@
             </div>
         </section>
 
+        <!-- ==============================================
+             View 6: 📅 天天記帳頁面 (Daily Ledger & Calendar)
+             ============================================== -->
+        <section class="wb-view" id="view-daily">
+            <!-- 頂部收支導航與統計看板 -->
+            <div class="wb-calendar-header">
+                <div class="wb-calendar-title-box">
+                    <button type="button" class="wb-btn sm" onclick="app.prevLedgerMonth()" title="前一個月份">◀ 上個月</button>
+                    <span class="wb-calendar-month-title" id="calMonthTitle">2026 年 10 月</span>
+                    <button type="button" class="wb-btn sm" onclick="app.nextLedgerMonth()" title="下一個月份">下個月 ▶</button>
+                    <button type="button" class="wb-btn sm outline" onclick="app.jumpToToday()" title="回到當前月份與今日">今天</button>
+                </div>
+                <div class="wb-calendar-stats">
+                    <div class="wb-cal-stat-pill" style="color:var(--danger)">💸 總支出: <strong id="calTotalExpense">$0</strong></div>
+                    <div class="wb-cal-stat-pill" style="color:var(--success)">💰 總收入: <strong id="calTotalIncome">$0</strong></div>
+                    <div class="wb-cal-stat-pill">結餘: <strong id="calNetSavings">$0</strong></div>
+                    <div class="wb-cal-stat-pill">儲蓄率: <strong id="calSavingsRate">0.0%</strong></div>
+                    <div class="wb-cal-stat-pill" style="color:var(--text-muted)">共 <strong id="calRecordCount">0 筆</strong></div>
+                </div>
+            </div>
+
+            <!-- 月曆熱力圖 (左) 與 當日時間軸側欄 (右) -->
+            <div class="wb-ledger-container">
+                <!-- 左側：月曆熱力圖卡片 -->
+                <div class="wb-card" style="padding:1.25rem;">
+                    <div class="wb-calendar-grid" style="margin-bottom:0.5rem;">
+                        <div class="wb-calendar-weekday">日</div>
+                        <div class="wb-calendar-weekday">一</div>
+                        <div class="wb-calendar-weekday">二</div>
+                        <div class="wb-calendar-weekday">三</div>
+                        <div class="wb-calendar-weekday">四</div>
+                        <div class="wb-calendar-weekday">五</div>
+                        <div class="wb-calendar-weekday">六</div>
+                    </div>
+                    <div class="wb-calendar-grid" id="calendarDaysGrid">
+                        <!-- 由 JavaScript 動態注入日曆格子 -->
+                    </div>
+                    <div style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:var(--text-muted);">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span>熱力說明:</span>
+                            <span style="color:#34d399;">■ 小額 &lt;$500</span>
+                            <span style="color:#facc15;">■ 中度 $500-1500</span>
+                            <span style="color:#fb923c;">■ 偏高 $1500-3000</span>
+                            <span style="color:#f87171;">■ 警戒 &gt;$3000</span>
+                        </div>
+                        <div>
+                            <span>🟢 綠點表示當日有收入</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：選中日期的時間軸消費流水 -->
+                <div class="wb-card wb-timeline-pane" style="padding:1.25rem;">
+                    <div class="wb-timeline-header">
+                        <div>
+                            <div class="wb-timeline-date" id="timelineSelectedDateTitle">📝 記帳明細</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;" id="timelineDayTotal">當日支出: $0</div>
+                        </div>
+                        <div style="display:flex; gap:0.35rem;">
+                            <button type="button" class="wb-btn sm primary" onclick="app.openDailyDrawerForCreate('expense')">
+                                ＋ 記一筆
+                            </button>
+                        </div>
+                    </div>
+                    <div class="wb-timeline-feed" id="timelineRecordFeed">
+                        <!-- 由 JavaScript 動態填入當日流水 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- 右側滑出抽屜 (Slide-over Drawer) 與毛玻璃背景遮罩 -->
@@ -975,6 +1049,7 @@
     <script src="js/views/history-view.js?v=20261001_v2"></script>
     <script src="js/views/pnl-view.js?v=20261001_v2"></script>
     <script src="js/views/drawer-view.js?v=20261001_v2"></script>
+    <script src="js/views/daily-ledger-view.js?v=20261002_v2"></script>
 
     <!-- 主調度控制器 -->
     <script src="js/workbench-app.js?v=20261001_v2"></script>

@@ -20,10 +20,11 @@ class WorkbenchApp {
             transactions: [],
             realizedPnL: [],
             latestPrices: {},
-            monthlySnapshots: {}
+            monthlySnapshots: {},
+            dailyRecords: []
         };
 
-        this.currentView = 'overview'; // 'overview' | 'bank' | 'stock' | 'history' | 'pnl'
+        this.currentView = 'overview'; // 'overview' | 'bank' | 'stock' | 'history' | 'pnl' | 'daily'
         this.historySearch = '';
         this.historyFilterAction = 'ALL';
         this.historyMarketFilter = 'ALL';
@@ -72,9 +73,10 @@ class WorkbenchApp {
         this.historyView = typeof HistoryView !== 'undefined' ? new HistoryView(this) : null;
         this.pnlView = typeof PnLView !== 'undefined' ? new PnLView(this) : null;
         this.drawerView = typeof DrawerView !== 'undefined' ? new DrawerView(this) : null;
+        this.dailyLedgerView = typeof DailyLedgerView !== 'undefined' ? new DailyLedgerView(this) : null;
 
         // 自動將視圖方法綁定至 app 實例，100% 保持 HTML onclick 與既有調用簽名相容
-        [this.overviewView, this.bankView, this.stockView, this.historyView, this.pnlView, this.drawerView].forEach(v => this._registerView(v));
+        [this.overviewView, this.bankView, this.stockView, this.historyView, this.pnlView, this.drawerView, this.dailyLedgerView].forEach(v => this._registerView(v));
     }
 
     _registerView(viewInstance) {
@@ -376,6 +378,8 @@ class WorkbenchApp {
             this.renderHistoryTable();
         } else if (viewName === 'pnl') {
             this.renderPnLTable();
+        } else if (viewName === 'daily') {
+            if (this.dailyLedgerView) this.dailyLedgerView.renderDailyLedger();
         }
     }
 
@@ -389,6 +393,9 @@ class WorkbenchApp {
         else if (this.currentView === 'stock') this.renderHoldingsTable();
         else if (this.currentView === 'history') this.renderHistoryTable();
         else if (this.currentView === 'pnl') this.renderPnLTable();
+        else if (this.currentView === 'daily') {
+            if (this.dailyLedgerView) this.dailyLedgerView.renderDailyLedger();
+        }
     }
 
     // ==========================================

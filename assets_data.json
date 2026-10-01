@@ -3481,7 +3481,7 @@
       "stockFeeRate": 0.001425,
       "stockTaxRate": 0.003
     },
-    "lastUpdated": "2026-10-01T15:01:26.487Z",
+    "lastUpdated": "2026-10-01T16:42:58.386Z",
     "version": "1.2.1",
     "accountList": [
       "富邦",
@@ -5645,5 +5645,17 @@
     "5314": 30.6,
     "6451": 413,
     "6862": 138
-  }
+  },
+  "dailyRecords": [
+    {
+      "id": "rec_1790872073072_135",
+      "date": "2026/10/01",
+      "type": "expense",
+      "category": "🍜 飲食",
+      "amount": 280,
+      "account": "Richart",
+      "toAccount": "",
+      "note": ""
+    }
+  ]
 }
