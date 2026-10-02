@@ -727,6 +727,11 @@ class DrawerView {
         this.scheduleAutoSave();
         this.closeDrawer();
         this.renderAll();
+        if (typeof this.renderDailyLedger === 'function') {
+            this.renderDailyLedger();
+        } else if (this.dailyLedgerView && typeof this.dailyLedgerView.renderDailyLedger === 'function') {
+            this.dailyLedgerView.renderDailyLedger();
+        }
     }
 
     deleteCurrentEditing() {

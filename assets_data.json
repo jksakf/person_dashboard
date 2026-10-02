@@ -61,9 +61,9 @@
       "bankName": "台新Richart",
       "accountType": "活存",
       "currency": "TWD",
-      "originalAmount": 8899,
+      "originalAmount": 8534,
       "exchangeRate": 1,
-      "twdAmount": 8899,
+      "twdAmount": 8534,
       "note": ""
     },
     {
@@ -3481,7 +3481,7 @@
       "stockFeeRate": 0.001425,
       "stockTaxRate": 0.003
     },
-    "lastUpdated": "2026-10-01T16:42:58.386Z",
+    "lastUpdated": "2026-10-02T03:09:32.461Z",
     "version": "1.2.1",
     "accountList": [
       "富邦",
@@ -5648,12 +5648,22 @@
   },
   "dailyRecords": [
     {
+      "id": "rec_1790910475220_284",
+      "date": "2026/10/02",
+      "type": "expense",
+      "category": "🍜 飲食",
+      "amount": 85,
+      "account": "台新Richart",
+      "toAccount": "",
+      "note": "Hot Latte"
+    },
+    {
       "id": "rec_1790872073072_135",
       "date": "2026/10/01",
       "type": "expense",
       "category": "🍜 飲食",
       "amount": 280,
-      "account": "Richart",
+      "account": "台新Richart",
       "toAccount": "",
       "note": ""
     }

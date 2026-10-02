@@ -24,70 +24,76 @@
 <body>
 
     <!-- 頂部控制與主要頁籤導航列 -->
+    <!-- 頂部控制與主要頁籤導航列 (雙層專業架構 PRO v2.0) -->
     <header class="wb-header">
-        <div class="wb-header-left">
+        <!-- 上層：系統狀態、總淨值與工具列 -->
+        <div class="wb-header-top-tier">
             <div class="wb-header-title-box">
-                <span class="wb-header-badge">PRO v1.3</span>
+                <span class="wb-header-badge">PRO v2.0</span>
                 <h1 class="wb-header-title">個人資產工作台</h1>
             </div>
 
-            <!-- 5 大核心獨立頁籤導航 -->
-            <nav class="wb-nav-tabs" id="mainNavTabs">
-                <button class="wb-nav-tab active" data-view="overview" onclick="app.switchView('overview')">
-                    📊 總覽儀表板
+            <div class="wb-header-actions">
+                <!-- 總淨值摘要膠囊 -->
+                <div class="wb-kpi-summary-pill" title="即時換算最新淨值">
+                    <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">總淨值:</span>
+                    <span class="wb-kpi-val" id="topNetWorth">$0</span>
+                </div>
+
+                <!-- 自動同步狀態指示膠囊 -->
+                <div class="wb-sync-badge-pill" id="syncStatusBadge" title="本機磁碟 assets_data.json 雙向同步狀態">
+                    <span class="sync-dot"></span>
+                    <span class="sync-text">🟢 已同步磁碟</span>
+                </div>
+
+                <!-- 系統工具下拉選單 (收納 備份JSON / 匯入JSON / 常用清單) -->
+                <div class="wb-dropdown-wrapper" id="systemToolsDropdown">
+                    <button type="button" class="wb-btn sm outline dropdown-trigger" onclick="app.toggleToolsMenu(event)" title="系統備份與清單工具">
+                        ⚙️ 系統工具 ▾
+                    </button>
+                    <div class="wb-dropdown-menu" id="systemToolsMenu">
+                        <button type="button" class="wb-dropdown-item" onclick="app.exportJson(); app.closeToolsMenu();">
+                            💾 備份 assets_data.json
+                        </button>
+                        <button type="button" class="wb-dropdown-item" onclick="document.getElementById('jsonFileInput').click(); app.closeToolsMenu();">
+                            📥 匯入 JSON 備份檔
+                        </button>
+                        <div class="wb-dropdown-divider"></div>
+                        <button type="button" class="wb-dropdown-item" onclick="app.openListManagerModal(); app.closeToolsMenu();">
+                            📋 管理常用股票/銀行清單
+                        </button>
+                    </div>
+                </div>
+                <input type="file" id="jsonFileInput" accept=".json" style="display:none;" onchange="app.importJsonFile(event)">
+
+                <!-- 深淺主題切換 -->
+                <button type="button" class="wb-btn sm" id="themeToggleBtn" onclick="app.toggleTheme()">
+                    ☀️ 淺色
                 </button>
-                <button class="wb-nav-tab" data-view="bank" onclick="app.switchView('bank')">
-                    🏦 銀行資產
-                </button>
-                <button class="wb-nav-tab" data-view="stock" data-module="stockHoldings"
-                    onclick="app.switchView('stock')">
-                    📦 股票庫存
-                </button>
-                <button class="wb-nav-tab" data-view="history" onclick="app.switchView('history')">
-                    📈 交易紀錄
-                </button>
-                <button class="wb-nav-tab" data-view="pnl" onclick="app.switchView('pnl')">
-                    💸 已實現損益
-                </button>
-                <button class="wb-nav-tab" data-view="daily" onclick="app.switchView('daily')">
-                    📅 天天記帳
-                </button>
-            </nav>
+            </div>
         </div>
 
-        <div class="wb-header-actions">
-            <!-- 總淨值摘要膠囊 -->
-            <div class="wb-kpi-summary-pill" title="即時換算最新淨值">
-                <span style="font-size:0.78rem; color:var(--text-muted);">總淨值:</span>
-                <span class="wb-kpi-val" id="topNetWorth">$0</span>
-            </div>
-
-            <!-- 自動同步狀態指示膠囊 -->
-            <div class="wb-sync-badge-pill" id="syncStatusBadge" title="本機磁碟 assets_data.json 雙向同步狀態">
-                <span class="sync-dot"></span>
-                <span class="sync-text">🟢 已同步磁碟</span>
-            </div>
-
-            <!-- 備份與還原 -->
-            <button class="wb-btn sm" onclick="app.exportJson()" title="匯出完整 assets_data.json 備份檔">
-                💾 備份 JSON
+        <!-- 下層：6 大核心獨立模組導航頁籤 -->
+        <nav class="wb-header-nav-tier" id="mainNavTabs">
+            <button class="wb-nav-tab active" data-view="overview" onclick="app.switchView('overview')">
+                📊 總覽儀表板
             </button>
-            <button class="wb-btn sm" onclick="document.getElementById('jsonFileInput').click()" title="還原/匯入 JSON 備份檔">
-                📥 匯入 JSON
+            <button class="wb-nav-tab" data-view="bank" onclick="app.switchView('bank')">
+                🏦 銀行資產
             </button>
-            <input type="file" id="jsonFileInput" accept=".json" style="display:none;"
-                onchange="app.importJsonFile(event)">
-
-            <!-- 常用清單管理 -->
-            <button class="wb-btn sm" onclick="app.openListManagerModal()" title="管理常用股票標的與銀行帳戶字典">
-                ⚙️ 常用清單
+            <button class="wb-nav-tab" data-view="stock" data-module="stockHoldings" onclick="app.switchView('stock')">
+                📦 股票庫存
             </button>
-
-            <!-- 深淺主題切換 -->
-            <button class="wb-btn sm" id="themeToggleBtn" onclick="app.toggleTheme()">
-                ☀️ 淺色
+            <button class="wb-nav-tab" data-view="history" onclick="app.switchView('history')">
+                📈 交易紀錄
             </button>
-        </div>
+            <button class="wb-nav-tab" data-view="pnl" onclick="app.switchView('pnl')">
+                💸 已實現損益
+            </button>
+            <button class="wb-nav-tab" data-view="daily" onclick="app.switchView('daily')">
+                📅 天天記帳
+            </button>
+        </nav>
     </header>
 
     <!-- 100% 全螢幕寬幅主工作區 (5 大獨立視圖) -->

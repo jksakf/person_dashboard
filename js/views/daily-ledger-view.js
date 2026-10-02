@@ -6,9 +6,8 @@
 class DailyLedgerView {
     constructor(app) {
         this.app = app;
-        const now = new Date();
-        this.currentMonth = now.toISOString().slice(0, 7); // e.g. '2026-10'
-        this.selectedDate = now.toISOString().slice(0, 10).replace(/-/g, '/'); // e.g. '2026/10/02'
+        this.currentMonth = this.getCurrentMonthStr();
+        this.selectedDate = this.getTodayDateStr();
         
         // 常用分類定義
         this.categories = {
@@ -18,10 +17,37 @@ class DailyLedgerView {
         };
     }
 
+    get data() {
+        if (this._data) return this._data;
+        if (this.app && this.app.data) return this.app.data;
+        if (typeof window !== 'undefined' && window.app && window.app.data) return window.app.data;
+        return { dailyRecords: [], meta: {} };
+    }
+    set data(val) {
+        this._data = val;
+    }
+
+    getTodayDateStr() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}/${m}/${d}`;
+    }
+
+    getCurrentMonthStr() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        return `${y}-${m}`;
+    }
+
     // ==========================================
     // 渲染天天記帳主畫面 (月曆 + 當日流水)
     // ==========================================
     renderDailyLedger() {
+        if (!this.currentMonth) this.currentMonth = this.getCurrentMonthStr();
+        if (!this.selectedDate) this.selectedDate = this.getTodayDateStr();
         const records = this.data.dailyRecords || [];
         const monthPrefix = this.currentMonth.replace('-', '/'); // '2026/10'
 
@@ -298,9 +324,8 @@ class DailyLedgerView {
     }
 
     jumpToToday() {
-        const now = new Date();
-        this.currentMonth = now.toISOString().slice(0, 7);
-        this.selectedDate = now.toISOString().slice(0, 10).replace(/-/g, '/');
+        this.currentMonth = this.getCurrentMonthStr();
+        this.selectedDate = this.getTodayDateStr();
         this.renderDailyLedger();
     }
 
@@ -309,28 +334,30 @@ class DailyLedgerView {
     // ==========================================
     openDailyDrawerForCreate(type = 'expense') {
         const randId = Math.floor(Math.random() * 900) + 100;
-        this.editingType = 'dailyRecord';
-        this.editingItem = {
+        const app = this.app || (typeof window !== 'undefined' ? window.app : this);
+        app.editingType = 'dailyRecord';
+        app.editingItem = {
             id: `rec_${Date.now()}_${randId}`,
-            date: this.selectedDate || new Date().toISOString().slice(0, 10).replace(/-/g, '/'),
+            date: this.selectedDate || this.getTodayDateStr(),
             type: type,
             category: type === 'expense' ? '🍜 飲食' : (type === 'income' ? '💼 薪資' : '🔄 帳戶互轉'),
             amount: '',
-            account: (this.data.meta.accountList && this.data.meta.accountList[0]) || '台新Richart',
+            account: (this.data.meta && this.data.meta.accountList && this.data.meta.accountList[0]) || '台新Richart',
             toAccount: '',
             note: ''
         };
-        this.renderDrawerForm();
-        this.openDrawer();
+        if (typeof app.renderDrawerForm === 'function') app.renderDrawerForm();
+        if (typeof app.openDrawer === 'function') app.openDrawer();
     }
 
     openDailyDrawerForEdit(id) {
+        const app = this.app || (typeof window !== 'undefined' ? window.app : this);
         const found = (this.data.dailyRecords || []).find(r => r.id === id);
         if (!found) return;
-        this.editingType = 'dailyRecord';
-        this.editingItem = JSON.parse(JSON.stringify(found));
-        this.renderDrawerForm();
-        this.openDrawer();
+        app.editingType = 'dailyRecord';
+        app.editingItem = JSON.parse(JSON.stringify(found));
+        if (typeof app.renderDrawerForm === 'function') app.renderDrawerForm();
+        if (typeof app.openDrawer === 'function') app.openDrawer();
     }
 
     // ==========================================
@@ -417,12 +444,13 @@ class DailyLedgerView {
         this.data.dailyRecords.splice(idx, 1);
 
         // 3. 儲存並刷新畫面
-        this.saveData();
+        const app = this.app || (typeof window !== 'undefined' ? window.app : this);
+        if (typeof app.saveData === 'function') app.saveData();
         this.renderDailyLedger();
-        this.renderBankTable();
-        this.renderTacticalCards();
-        this.renderMetrics();
-        this.showToast('🗑️ 記帳已刪除，帳戶餘額已自動還原！', 'info');
+        if (typeof app.renderBankTable === 'function') app.renderBankTable();
+        if (typeof app.renderTacticalCards === 'function') app.renderTacticalCards();
+        if (typeof app.renderMetrics === 'function') app.renderMetrics();
+        if (typeof app.showToast === 'function') app.showToast('🗑️ 記帳已刪除，帳戶餘額已自動還原！', 'info');
     }
 }
 

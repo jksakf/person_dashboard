@@ -97,7 +97,7 @@ class WorkbenchApp {
         this.updateInitialSyncStatus();
         this.startHeartbeat();
         this.switchView('overview');
-        this.showToast('資產工作台 v1.3 就緒 (獨立全寬度視圖模式)', 'success');
+        this.showToast('個人資產工作台 PRO v2.0 就緒', 'success');
     }
 
     // ==========================================
@@ -337,9 +337,10 @@ class WorkbenchApp {
     }
 
     bindEvents() {
-        // Esc 鍵關閉彈窗或抽屜
+        // Esc 鍵關閉彈窗、選單或抽屜
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
+                this.closeToolsMenu();
                 if (this.isListModalOpen) {
                     this.closeListManagerModal();
                 } else if (this.isDrawerOpen) {
@@ -347,6 +348,29 @@ class WorkbenchApp {
                 }
             }
         });
+
+        // 點擊外部自動收起系統工具下拉選單
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('systemToolsDropdown');
+            if (dropdown && !dropdown.contains(e.target)) {
+                this.closeToolsMenu();
+            }
+        });
+    }
+
+    toggleToolsMenu(e) {
+        if (e) e.stopPropagation();
+        const menu = document.getElementById('systemToolsMenu');
+        if (menu) {
+            menu.classList.toggle('show');
+        }
+    }
+
+    closeToolsMenu() {
+        const menu = document.getElementById('systemToolsMenu');
+        if (menu) {
+            menu.classList.remove('show');
+        }
     }
 
     // ==========================================
@@ -379,7 +403,11 @@ class WorkbenchApp {
         } else if (viewName === 'pnl') {
             this.renderPnLTable();
         } else if (viewName === 'daily') {
-            if (this.dailyLedgerView) this.dailyLedgerView.renderDailyLedger();
+            if (typeof this.renderDailyLedger === 'function') {
+                this.renderDailyLedger();
+            } else if (this.dailyLedgerView && typeof this.dailyLedgerView.renderDailyLedger === 'function') {
+                this.dailyLedgerView.renderDailyLedger();
+            }
         }
     }
 
@@ -394,7 +422,11 @@ class WorkbenchApp {
         else if (this.currentView === 'history') this.renderHistoryTable();
         else if (this.currentView === 'pnl') this.renderPnLTable();
         else if (this.currentView === 'daily') {
-            if (this.dailyLedgerView) this.dailyLedgerView.renderDailyLedger();
+            if (typeof this.renderDailyLedger === 'function') {
+                this.renderDailyLedger();
+            } else if (this.dailyLedgerView && typeof this.dailyLedgerView.renderDailyLedger === 'function') {
+                this.dailyLedgerView.renderDailyLedger();
+            }
         }
     }
 
