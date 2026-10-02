@@ -163,21 +163,7 @@ class DailyLedgerView {
             const hasExp = exp > 0;
             const hasInc = inc > 0;
 
-            // 計算熱力與狀態邊線
-            let heatClass = '';
-            if (net > 0) {
-                heatClass = 'net-positive-ambient income-only';
-            } else if (exp > 3000) {
-                heatClass = 'heat-4';
-            } else if (exp > 1500) {
-                heatClass = 'heat-3';
-            } else if (exp > 500) {
-                heatClass = 'heat-2';
-            } else if (exp > 0) {
-                heatClass = 'heat-1';
-            }
-
-            // 組織當日金額與 Apple / Copilot 極簡風格排版
+            // 組織當日金額與乾淨直觀排版
             let amountHtml = '';
             let titleText = `${fullDateStr}`;
 
@@ -215,7 +201,7 @@ class DailyLedgerView {
             }
 
             html += `
-            <div class="wb-calendar-day ${heatClass} ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}" 
+            <div class="wb-calendar-day ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}" 
                  onclick="app.selectLedgerDate('${fullDateStr}')"
                  title="${titleText}">
                 <div class="wb-day-header">

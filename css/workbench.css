@@ -1052,18 +1052,17 @@ header.wb-header {
 }
 
 .wb-calendar-day {
-    min-height: 82px;
-    background: rgba(255, 255, 255, 0.018);
+    min-height: 80px;
+    background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-sm);
     padding: 0.45rem 0.5rem;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.15s ease;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     position: relative;
-    overflow: hidden;
     user-select: none;
 }
 
@@ -1072,21 +1071,19 @@ header.wb-header {
 }
 
 .wb-calendar-day:hover {
-    border-color: rgba(56, 189, 248, 0.45);
+    border-color: rgba(56, 189, 248, 0.4);
     background: rgba(255, 255, 255, 0.035);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    transform: translateY(-1px);
 }
 
 [data-theme="light"] .wb-calendar-day:hover {
     background: rgba(0, 0, 0, 0.03);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
 .wb-calendar-day.selected {
     border: 2px solid var(--primary) !important;
     background: rgba(56, 189, 248, 0.08) !important;
-    box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
 }
 
 .wb-calendar-day.today .wb-day-number {
@@ -1098,11 +1095,11 @@ header.wb-header {
 }
 
 .wb-calendar-day.other-month {
-    opacity: 0.2;
+    opacity: 0.25;
     pointer-events: none;
 }
 
-/* 頂部日期與狀態 */
+/* 頂部日期 */
 .wb-day-header {
     display: flex;
     justify-content: space-between;
@@ -1111,80 +1108,12 @@ header.wb-header {
 }
 
 .wb-day-number {
-    font-size: 0.78rem;
-    font-weight: 500;
-    font-family: var(--font-mono, monospace);
-    color: var(--text-muted);
-    opacity: 0.85;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-color);
 }
 
-/* 底部精緻能量細線 (Hairline Accent Line) */
-.wb-calendar-day::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.wb-calendar-day.net-positive-ambient::after,
-.wb-calendar-day.income-only::after {
-    background: #10b981;
-    opacity: 0.85;
-}
-
-.wb-calendar-day.heat-1::after {
-    background: #34d399;
-    opacity: 0.65;
-}
-
-.wb-calendar-day.heat-2::after {
-    background: #eab308;
-    opacity: 0.75;
-}
-
-.wb-calendar-day.heat-3::after {
-    background: #f97316;
-    opacity: 0.85;
-}
-
-.wb-calendar-day.heat-4::after {
-    background: #ef4444;
-    opacity: 1;
-    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
-}
-
-/* 卡片微透色彩 (Subtle Ambient Tint) */
-.wb-calendar-day.income-only,
-.wb-calendar-day.net-positive-ambient {
-    border-color: rgba(16, 185, 129, 0.28);
-    background: rgba(16, 185, 129, 0.035);
-}
-
-.wb-calendar-day.heat-1 {
-    border-color: rgba(52, 211, 153, 0.2);
-    background: rgba(52, 211, 153, 0.02);
-}
-
-.wb-calendar-day.heat-2 {
-    border-color: rgba(234, 179, 8, 0.22);
-    background: rgba(234, 179, 8, 0.025);
-}
-
-.wb-calendar-day.heat-3 {
-    border-color: rgba(249, 115, 22, 0.26);
-    background: rgba(249, 115, 22, 0.03);
-}
-
-.wb-calendar-day.heat-4 {
-    border-color: rgba(239, 68, 68, 0.35);
-    background: rgba(239, 68, 68, 0.05);
-}
-
-/* 金額區塊排版 (Copilot / Apple Typography) */
+/* 金額區塊排版 (乾淨直觀) */
 .wb-day-body {
     display: flex;
     flex-direction: column;
@@ -1199,13 +1128,8 @@ header.wb-header {
     font-weight: 700;
     font-family: var(--font-mono, monospace);
     letter-spacing: -0.3px;
-    line-height: 1.15;
+    line-height: 1.2;
     text-align: right;
-    transition: transform 0.15s ease;
-}
-
-.wb-calendar-day:hover .wb-day-hero-net {
-    transform: translateX(-1px);
 }
 
 .wb-day-hero-net.net-positive {
@@ -1222,54 +1146,42 @@ header.wb-header {
     align-items: center;
     justify-content: flex-end;
     gap: 3px;
-    font-size: 0.64rem;
+    font-size: 0.65rem;
     font-family: var(--font-mono, monospace);
-    line-height: 1;
-    margin-top: 3px;
+    line-height: 1.1;
+    margin-top: 2px;
 }
 
 .wb-hairline-inc {
     color: #10b981;
-    font-weight: 500;
-    opacity: 0.85;
+    font-weight: 600;
 }
 
 .wb-hairline-sep {
     color: var(--text-muted);
-    opacity: 0.35;
-    font-size: 0.55rem;
+    opacity: 0.4;
+    font-size: 0.58rem;
     margin: 0 1px;
 }
 
 .wb-hairline-exp {
     color: #f87171;
-    font-weight: 500;
-    opacity: 0.85;
+    font-weight: 600;
 }
 
 .wb-day-transfer-tag {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
     font-weight: 500;
 }
 
-/* 淺色主題適配 */
-[data-theme="light"] .wb-calendar-day.income-only,
-[data-theme="light"] .wb-calendar-day.net-positive-ambient {
-    background: rgba(16, 185, 129, 0.06);
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-[data-theme="light"] .wb-calendar-day.heat-4 {
-    background: rgba(239, 68, 68, 0.06);
-    border-color: rgba(239, 68, 68, 0.3);
-}
-
-[data-theme="light"] .wb-day-hero-net.net-positive {
+[data-theme="light"] .wb-day-hero-net.net-positive,
+[data-theme="light"] .wb-hairline-inc {
     color: #059669;
 }
 
-[data-theme="light"] .wb-day-hero-net.net-negative {
+[data-theme="light"] .wb-day-hero-net.net-negative,
+[data-theme="light"] .wb-hairline-exp {
     color: #dc2626;
 }
 
