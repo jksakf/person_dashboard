@@ -1052,13 +1052,13 @@ header.wb-header {
 }
 
 .wb-calendar-day {
-    min-height: 80px;
-    background: rgba(255, 255, 255, 0.02);
+    min-height: 82px;
+    background: rgba(255, 255, 255, 0.018);
     border: 1px solid var(--card-border);
     border-radius: var(--radius-sm);
-    padding: 0.4rem;
+    padding: 0.45rem 0.5rem;
     cursor: pointer;
-    transition: all 0.18s ease;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -1072,15 +1072,21 @@ header.wb-header {
 }
 
 .wb-calendar-day:hover {
-    border-color: rgba(56, 189, 248, 0.5);
-    background: rgba(56, 189, 248, 0.04);
-    transform: translateY(-1px);
+    border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(255, 255, 255, 0.035);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="light"] .wb-calendar-day:hover {
+    background: rgba(0, 0, 0, 0.03);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
 }
 
 .wb-calendar-day.selected {
     border: 2px solid var(--primary) !important;
-    background: rgba(56, 189, 248, 0.12) !important;
-    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+    background: rgba(56, 189, 248, 0.08) !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
 }
 
 .wb-calendar-day.today .wb-day-number {
@@ -1092,234 +1098,179 @@ header.wb-header {
 }
 
 .wb-calendar-day.other-month {
-    opacity: 0.25;
+    opacity: 0.2;
     pointer-events: none;
 }
 
-/* 頂部 3.5px 霓虹能量光條 (Horizon Glow Bar) */
-.wb-day-horizon-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3.5px;
-    z-index: 2;
-    transition: all 0.2s ease;
-}
-
-.wb-calendar-day:hover .wb-day-horizon-bar {
-    height: 4.5px;
-    filter: brightness(1.2);
-}
-
-.wb-calendar-day.income-only .wb-day-horizon-bar,
-.wb-calendar-day.net-positive-ambient .wb-day-horizon-bar {
-    background: #10b981;
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
-}
-
-.wb-calendar-day.heat-1 .wb-day-horizon-bar {
-    background: #34d399;
-    box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
-}
-
-.wb-calendar-day.heat-2 .wb-day-horizon-bar {
-    background: #eab308;
-    box-shadow: 0 0 8px rgba(234, 179, 8, 0.65);
-}
-
-.wb-calendar-day.heat-3 .wb-day-horizon-bar {
-    background: #f97316;
-    box-shadow: 0 0 9px rgba(249, 115, 22, 0.7);
-}
-
-.wb-calendar-day.heat-4 .wb-day-horizon-bar {
-    background: #ef4444;
-    box-shadow: 0 0 11px rgba(239, 68, 68, 0.85);
-}
-
+/* 頂部日期與狀態 */
 .wb-day-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    position: relative;
-    z-index: 1;
+    align-items: flex-start;
+    width: 100%;
 }
 
 .wb-day-number {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-color);
+    font-size: 0.78rem;
+    font-weight: 500;
+    font-family: var(--font-mono, monospace);
+    color: var(--text-muted);
+    opacity: 0.85;
 }
 
-/* 居中高對比發光牌 (Centered Pill Badge) */
+/* 底部精緻能量細線 (Hairline Accent Line) */
+.wb-calendar-day::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.wb-calendar-day.net-positive-ambient::after,
+.wb-calendar-day.income-only::after {
+    background: #10b981;
+    opacity: 0.85;
+}
+
+.wb-calendar-day.heat-1::after {
+    background: #34d399;
+    opacity: 0.65;
+}
+
+.wb-calendar-day.heat-2::after {
+    background: #eab308;
+    opacity: 0.75;
+}
+
+.wb-calendar-day.heat-3::after {
+    background: #f97316;
+    opacity: 0.85;
+}
+
+.wb-calendar-day.heat-4::after {
+    background: #ef4444;
+    opacity: 1;
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+/* 卡片微透色彩 (Subtle Ambient Tint) */
+.wb-calendar-day.income-only,
+.wb-calendar-day.net-positive-ambient {
+    border-color: rgba(16, 185, 129, 0.28);
+    background: rgba(16, 185, 129, 0.035);
+}
+
+.wb-calendar-day.heat-1 {
+    border-color: rgba(52, 211, 153, 0.2);
+    background: rgba(52, 211, 153, 0.02);
+}
+
+.wb-calendar-day.heat-2 {
+    border-color: rgba(234, 179, 8, 0.22);
+    background: rgba(234, 179, 8, 0.025);
+}
+
+.wb-calendar-day.heat-3 {
+    border-color: rgba(249, 115, 22, 0.26);
+    background: rgba(249, 115, 22, 0.03);
+}
+
+.wb-calendar-day.heat-4 {
+    border-color: rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+/* 金額區塊排版 (Copilot / Apple Typography) */
 .wb-day-body {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin-top: auto;
-    margin-bottom: auto;
+    align-items: flex-end;
+    justify-content: flex-end;
     width: 100%;
-    padding: 0.2rem 0;
-    position: relative;
-    z-index: 1;
+    margin-top: auto;
 }
 
-.wb-day-pill-badge {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 9999px;
-    padding: 3px 9px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-    transition: all 0.15s ease;
-    max-width: 96%;
-}
-
-.wb-calendar-day:hover .wb-day-pill-badge {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    border-color: rgba(255, 255, 255, 0.25);
-}
-
-.wb-day-pill-badge.pill-positive {
-    border-color: rgba(16, 185, 129, 0.4);
-    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2);
-}
-
-.wb-day-pill-badge.pill-negative {
-    border-color: rgba(239, 68, 68, 0.35);
-    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.2);
-}
-
-.wb-day-pill-amount {
-    font-size: 0.84rem;
+.wb-day-hero-net {
+    font-size: 0.9rem;
     font-weight: 700;
     font-family: var(--font-mono, monospace);
     letter-spacing: -0.3px;
     line-height: 1.15;
-    text-align: center;
-    white-space: nowrap;
+    text-align: right;
+    transition: transform 0.15s ease;
 }
 
-.wb-day-pill-amount.net-positive {
-    color: #34d399;
-    text-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+.wb-calendar-day:hover .wb-day-hero-net {
+    transform: translateX(-1px);
 }
 
-.wb-day-pill-amount.net-negative {
+.wb-day-hero-net.net-positive {
+    color: #10b981;
+}
+
+.wb-day-hero-net.net-negative {
     color: #f87171;
-    text-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
 }
 
-.wb-day-pill-subnote {
-    font-size: 0.62rem;
+/* 雙向收支極簡明細 */
+.wb-day-hairline-breakdown {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    font-size: 0.64rem;
     font-family: var(--font-mono, monospace);
-    color: var(--text-muted);
-    margin-top: 2px;
-    text-align: center;
     line-height: 1;
-    white-space: nowrap;
+    margin-top: 3px;
 }
 
-.wb-pill-sub-inc {
-    color: #34d399;
-    font-weight: 600;
-    opacity: 0.95;
+.wb-hairline-inc {
+    color: #10b981;
+    font-weight: 500;
+    opacity: 0.85;
 }
 
-.wb-pill-sub-sep {
+.wb-hairline-sep {
     color: var(--text-muted);
-    opacity: 0.4;
-    margin: 0 2px;
+    opacity: 0.35;
+    font-size: 0.55rem;
+    margin: 0 1px;
 }
 
-.wb-pill-sub-exp {
+.wb-hairline-exp {
     color: #f87171;
-    font-weight: 600;
-    opacity: 0.95;
+    font-weight: 500;
+    opacity: 0.85;
 }
 
 .wb-day-transfer-tag {
-    font-size: 0.72rem;
-    color: var(--primary);
-    font-weight: 600;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 500;
 }
 
-/* 18%~24% 深度飽和漸層底色與光暈邊框 (Saturated Gradient Fill) */
-.wb-calendar-day.income-only,
-.wb-calendar-day.net-positive-ambient {
-    border-color: rgba(16, 185, 129, 0.45);
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.05) 100%);
-    box-shadow: 0 0 12px rgba(16, 185, 129, 0.12);
-}
-
-.wb-calendar-day.income-only:hover,
-.wb-calendar-day.net-positive-ambient:hover {
-    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.28);
-    border-color: rgba(16, 185, 129, 0.7);
-}
-
-.wb-calendar-day.heat-1 {
-    border-color: rgba(52, 211, 153, 0.35);
-    background: linear-gradient(180deg, rgba(52, 211, 153, 0.14) 0%, rgba(52, 211, 153, 0.03) 100%);
-}
-
-.wb-calendar-day.heat-2 {
-    border-color: rgba(234, 179, 8, 0.4);
-    background: linear-gradient(180deg, rgba(234, 179, 8, 0.18) 0%, rgba(234, 179, 8, 0.04) 100%);
-}
-
-.wb-calendar-day.heat-3 {
-    border-color: rgba(249, 115, 22, 0.45);
-    background: linear-gradient(180deg, rgba(249, 115, 22, 0.22) 0%, rgba(249, 115, 22, 0.05) 100%);
-}
-
-.wb-calendar-day.heat-4 {
-    border-color: rgba(239, 68, 68, 0.55);
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.26) 0%, rgba(239, 68, 68, 0.07) 100%);
-    box-shadow: 0 0 14px rgba(239, 68, 68, 0.2);
-}
-
-/* 淺色主題適配 (Light Theme Adaptations) */
+/* 淺色主題適配 */
 [data-theme="light"] .wb-calendar-day.income-only,
 [data-theme="light"] .wb-calendar-day.net-positive-ambient {
-    background: linear-gradient(180deg, rgba(16, 185, 129, 0.20) 0%, rgba(16, 185, 129, 0.04) 100%);
-    border-color: rgba(16, 185, 129, 0.5);
-}
-[data-theme="light"] .wb-calendar-day.heat-1 {
-    background: linear-gradient(180deg, rgba(52, 211, 153, 0.18) 0%, rgba(52, 211, 153, 0.03) 100%);
-    border-color: rgba(52, 211, 153, 0.4);
-}
-[data-theme="light"] .wb-calendar-day.heat-2 {
-    background: linear-gradient(180deg, rgba(234, 179, 8, 0.22) 0%, rgba(234, 179, 8, 0.04) 100%);
-    border-color: rgba(234, 179, 8, 0.45);
-}
-[data-theme="light"] .wb-calendar-day.heat-3 {
-    background: linear-gradient(180deg, rgba(249, 115, 22, 0.24) 0%, rgba(249, 115, 22, 0.05) 100%);
-    border-color: rgba(249, 115, 22, 0.5);
-}
-[data-theme="light"] .wb-calendar-day.heat-4 {
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.28) 0%, rgba(239, 68, 68, 0.06) 100%);
-    border-color: rgba(239, 68, 68, 0.6);
+    background: rgba(16, 185, 129, 0.06);
+    border-color: rgba(16, 185, 129, 0.3);
 }
 
-[data-theme="light"] .wb-day-pill-badge {
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+[data-theme="light"] .wb-calendar-day.heat-4 {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.3);
 }
-[data-theme="light"] .wb-day-pill-amount.net-positive {
+
+[data-theme="light"] .wb-day-hero-net.net-positive {
     color: #059669;
-    text-shadow: none;
 }
-[data-theme="light"] .wb-day-pill-amount.net-negative {
+
+[data-theme="light"] .wb-day-hero-net.net-negative {
     color: #dc2626;
-    text-shadow: none;
 }
 
 /* 右側時間軸明細側欄 */
