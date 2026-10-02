@@ -1110,14 +1110,21 @@ header.wb-header {
 .wb-day-badges {
     display: flex;
     gap: 3px;
+    align-items: center;
 }
 
-.wb-income-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--success);
-    box-shadow: 0 0 4px var(--success);
+.wb-day-badge-icon {
+    font-size: 0.72rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+    transition: transform 0.15s ease;
+}
+
+.wb-calendar-day:hover .wb-day-badge-icon {
+    transform: scale(1.15);
 }
 
 /* 日曆收支與淨流動階層化呈現 */
@@ -1153,36 +1160,35 @@ header.wb-header {
     color: #f87171;
 }
 
-.wb-day-micro-breakdown {
+/* 精煉雙向收支髮絲明細 (Hairline Breakdown) */
+.wb-day-hairline-breakdown {
     display: flex;
-    gap: 4px;
-    margin-top: 4px;
-    justify-content: flex-end;
     align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    font-size: 0.65rem;
+    font-family: var(--font-mono, monospace);
+    line-height: 1.1;
+    margin-top: 3px;
 }
 
-.wb-inc-pill {
-    font-size: 0.66rem;
-    font-weight: 600;
-    font-family: var(--font-mono, monospace);
+.wb-hairline-inc {
     color: #10b981;
-    background: rgba(16, 185, 129, 0.15);
-    padding: 1px 4px;
-    border-radius: 3px;
-    line-height: 1.1;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-weight: 600;
+    opacity: 0.92;
 }
 
-.wb-exp-pill {
-    font-size: 0.66rem;
-    font-weight: 600;
-    font-family: var(--font-mono, monospace);
+.wb-hairline-sep {
+    color: var(--text-muted);
+    opacity: 0.4;
+    font-size: 0.58rem;
+    margin: 0 1px;
+}
+
+.wb-hairline-exp {
     color: #f87171;
-    background: rgba(239, 68, 68, 0.15);
-    padding: 1px 4px;
-    border-radius: 3px;
-    line-height: 1.1;
-    border: 1px solid rgba(239, 68, 68, 0.3);
+    font-weight: 600;
+    opacity: 0.92;
 }
 
 .wb-day-transfer-tag {
@@ -1191,22 +1197,22 @@ header.wb-header {
     font-weight: 500;
 }
 
-.wb-transfer-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background-color: var(--primary);
-    box-shadow: 0 0 4px var(--primary);
+/* 熱力等級邊線與終端微光背景卡片 */
+.wb-calendar-day.income-only,
+.wb-calendar-day.net-positive-ambient {
+    border-left: 3px solid rgba(16, 185, 129, 0.9);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(255, 255, 255, 0.015) 100%);
 }
 
-/* 熱力等級邊線與背景光 */
-.wb-calendar-day.income-only {
-    border-left: 3px solid rgba(16, 185, 129, 0.9);
-    background: rgba(16, 185, 129, 0.03);
+.wb-calendar-day.income-only:hover,
+.wb-calendar-day.net-positive-ambient:hover {
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
+    border-color: rgba(16, 185, 129, 0.4);
 }
 
 .wb-calendar-day.heat-1 {
-    border-left: 3px solid rgba(52, 211, 153, 0.8);
+    border-left: 3px solid rgba(52, 211, 153, 0.85);
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
 }
 .wb-calendar-day.heat-1 .wb-day-hero-net.net-negative {
     color: #fca5a5;
@@ -1214,6 +1220,7 @@ header.wb-header {
 
 .wb-calendar-day.heat-2 {
     border-left: 3px solid rgba(234, 179, 8, 0.85);
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
 }
 .wb-calendar-day.heat-2 .wb-day-hero-net.net-negative {
     color: #f87171;
@@ -1221,7 +1228,7 @@ header.wb-header {
 
 .wb-calendar-day.heat-3 {
     border-left: 3px solid rgba(249, 115, 22, 0.9);
-    background: rgba(249, 115, 22, 0.03);
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
 }
 .wb-calendar-day.heat-3 .wb-day-hero-net.net-negative {
     color: #fb7185;
@@ -1229,12 +1236,31 @@ header.wb-header {
 
 .wb-calendar-day.heat-4 {
     border-left: 3px solid rgba(239, 68, 68, 1);
-    background: rgba(239, 68, 68, 0.06);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(255, 255, 255, 0.015) 100%);
+    box-shadow: inset 0 0 12px rgba(239, 68, 68, 0.06);
 }
 .wb-calendar-day.heat-4 .wb-day-hero-net.net-negative {
     color: #f43f5e;
     font-weight: 800;
-    text-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
+    text-shadow: 0 0 8px rgba(244, 63, 94, 0.35);
+}
+
+/* 淺色主題適配 (Light Theme Adaptations) */
+[data-theme="light"] .wb-calendar-day.income-only,
+[data-theme="light"] .wb-calendar-day.net-positive-ambient {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+[data-theme="light"] .wb-calendar-day.heat-1 {
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.08) 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+[data-theme="light"] .wb-calendar-day.heat-2 {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.10) 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+[data-theme="light"] .wb-calendar-day.heat-3 {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(0, 0, 0, 0.01) 100%);
+}
+[data-theme="light"] .wb-calendar-day.heat-4 {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(0, 0, 0, 0.01) 100%);
 }
 
 /* 右側時間軸明細側欄 */

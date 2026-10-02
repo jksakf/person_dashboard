@@ -165,18 +165,33 @@ class DailyLedgerView {
 
             // 計算熱力與狀態邊線
             let heatClass = '';
-            if (exp > 3000) heatClass = 'heat-4';
-            else if (exp > 1500) heatClass = 'heat-3';
-            else if (exp > 500) heatClass = 'heat-2';
-            else if (exp > 0) heatClass = 'heat-1';
-            else if (inc > 0) heatClass = 'income-only';
+            if (net > 0) {
+                heatClass = 'net-positive-ambient income-only';
+            } else if (exp > 3000) {
+                heatClass = 'heat-4';
+            } else if (exp > 1500) {
+                heatClass = 'heat-3';
+            } else if (exp > 500) {
+                heatClass = 'heat-2';
+            } else if (exp > 0) {
+                heatClass = 'heat-1';
+            }
+
+            // 例外導向警示微章 (Exception-based Alerts)
+            let badgeHtml = '';
+            if (inc >= 5000) {
+                badgeHtml += `<span class="wb-day-badge-icon" title="大額進帳: +$${Math.round(inc).toLocaleString()}">💰</span>`;
+            }
+            if (exp > 3000) {
+                badgeHtml += `<span class="wb-day-badge-icon" title="警戒超支: -$${Math.round(exp).toLocaleString()}">🔥</span>`;
+            }
 
             // 組織當日金額與階層化標籤
             let amountHtml = '';
             let titleText = `${fullDateStr}`;
 
             if (hasInc && hasExp) {
-                // 雙向收支：Hero 顯示淨額，下方膠囊並列收入與支出
+                // 雙向收支：Hero 顯示淨額，下方以精緻髮絲字體並列收入與支出明細
                 const netSign = net >= 0 ? '+' : '-';
                 const netClass = net >= 0 ? 'net-positive' : 'net-negative';
                 titleText += ` ｜ 收入: +$${Math.round(inc).toLocaleString()} ｜ 支出: -$${Math.round(exp).toLocaleString()} ｜ 淨收支: ${netSign}$${Math.round(Math.abs(net)).toLocaleString()}`;
@@ -184,9 +199,10 @@ class DailyLedgerView {
                 <div class="wb-day-hero-net ${netClass}">
                     ${netSign}$${Math.round(Math.abs(net)).toLocaleString()}
                 </div>
-                <div class="wb-day-micro-breakdown">
-                    <span class="wb-inc-pill">+${Math.round(inc).toLocaleString()}</span>
-                    <span class="wb-exp-pill">-${Math.round(exp).toLocaleString()}</span>
+                <div class="wb-day-hairline-breakdown">
+                    <span class="wb-hairline-inc">+${Math.round(inc).toLocaleString()}</span>
+                    <span class="wb-hairline-sep">｜</span>
+                    <span class="wb-hairline-exp">-${Math.round(exp).toLocaleString()}</span>
                 </div>`;
             } else if (hasInc) {
                 // 純收入
@@ -214,8 +230,7 @@ class DailyLedgerView {
                 <div class="wb-day-header">
                     <span class="wb-day-number">${day}</span>
                     <div class="wb-day-badges">
-                        ${hasInc && !hasExp ? '<span class="wb-income-dot" title="當日收入"></span>' : ''}
-                        ${summary.hasTransfer ? '<span class="wb-transfer-dot" title="當日有轉帳"></span>' : ''}
+                        ${badgeHtml}
                     </div>
                 </div>
                 <div class="wb-day-body">
