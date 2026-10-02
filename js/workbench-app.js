@@ -118,9 +118,17 @@ class WorkbenchApp {
         // 立即發送第一次心跳
         sendBeat();
 
-        // 每 5 秒定期心跳續約 (伺服器無心跳 30 秒自動退出)
+        // 每 5 秒定期心跳續約 (伺服器無心跳 30 分鐘自動退出)
         if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
         this.heartbeatInterval = setInterval(sendBeat, 5000);
+
+        // 當分頁重新回到前景或獲得焦點時，立即主動發送心跳確保連線不中斷
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                sendBeat();
+            }
+        });
+        window.addEventListener('focus', sendBeat);
     }
 
     initTheme() {

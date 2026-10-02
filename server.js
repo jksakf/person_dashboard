@@ -281,9 +281,9 @@ function saveAllData(newData) {
 }
 
 // ==========================================
-// 30 秒無心跳自動終止守護邏輯 (Graceful Auto-Shutdown)
+// 30 分鐘無心跳自動終止守護邏輯 (Graceful Auto-Shutdown)
 // ==========================================
-const INACTIVITY_TIMEOUT_MS = 30 * 1000;
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 分鐘 (避免背景分頁計時器節流導致誤關閉)
 let inactivityTimer = null;
 
 function resetInactivityTimer() {
@@ -291,7 +291,7 @@ function resetInactivityTimer() {
         clearTimeout(inactivityTimer);
     }
     inactivityTimer = setTimeout(() => {
-        console.log(`[server.js] 已超過 ${INACTIVITY_TIMEOUT_MS / 1000} 秒未收到網頁心跳，自動安全關閉服務 (PID: ${process.pid})...`);
+        console.log(`[server.js] 已超過 ${INACTIVITY_TIMEOUT_MS / 60000} 分鐘未收到網頁心跳，自動安全關閉服務 (PID: ${process.pid})...`);
         process.exit(0);
     }, INACTIVITY_TIMEOUT_MS);
 }
