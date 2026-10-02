@@ -571,20 +571,40 @@ header.wb-header {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .wb-form-group.col-full {
     grid-column: span 2;
 }
 
+#group_daily_to_account {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#group_daily_to_account.hidden {
+    display: none !important;
+}
+
 .wb-label {
+    display: block;
+    width: 100%;
     font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-muted);
+    margin-bottom: 2px;
 }
 
 .wb-input,
 .wb-select {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
     padding: 0.5rem 0.75rem;
     background-color: var(--input-bg);
     border: 1px solid var(--input-border);

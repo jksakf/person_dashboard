@@ -674,21 +674,21 @@ class DrawerView {
                     <input type="number" step="any" class="wb-input mono" id="drawer_daily_amount" value="${item.amount || ''}" placeholder="請輸入金額" style="font-size:1.15rem; font-weight:700;">
                 </div>
 
-                <div class="wb-form-group" id="group_daily_account">
+                <div class="wb-form-group ${item.type === 'transfer' ? '' : 'col-full'}" id="group_daily_account">
                     <label class="wb-label">${item.type === 'income' ? '入帳銀行帳戶' : (item.type === 'transfer' ? '轉出銀行帳戶' : '扣款銀行帳戶')}</label>
                     <select class="wb-select" id="drawer_daily_account" onchange="app.onDailyAccountSelectChange(this.value, 'drawer_daily_account')">
                         ${dailyAccOptions}
                     </select>
                 </div>
 
-                <div class="wb-form-group" id="group_daily_to_account" style="${item.type === 'transfer' ? '' : 'display:none;'}">
+                <div class="wb-form-group" id="group_daily_to_account" style="${item.type === 'transfer' ? 'display:flex;' : 'display:none;'}">
                     <label class="wb-label">轉入銀行帳戶</label>
                     <select class="wb-select" id="drawer_daily_to_account" onchange="app.onDailyAccountSelectChange(this.value, 'drawer_daily_to_account')">
                         ${dailyToAccOptions}
                     </select>
                 </div>
 
-                <div class="wb-form-group">
+                <div class="wb-form-group col-full">
                     <label class="wb-label">消費備註 / 細項說明</label>
                     <input type="text" class="wb-input" id="drawer_daily_note" value="${item.note || ''}" placeholder="例如: 聚餐拉麵、加油">
                 </div>
@@ -711,7 +711,15 @@ class DrawerView {
         }
         const toAccGroup = document.getElementById('group_daily_to_account');
         if (toAccGroup) {
-            toAccGroup.style.display = type === 'transfer' ? 'block' : 'none';
+            toAccGroup.style.display = type === 'transfer' ? 'flex' : 'none';
+        }
+        const accGroup = document.getElementById('group_daily_account');
+        if (accGroup) {
+            if (type === 'transfer') {
+                accGroup.classList.remove('col-full');
+            } else {
+                accGroup.classList.add('col-full');
+            }
         }
         const accLabel = document.querySelector('#group_daily_account label');
         if (accLabel) {
