@@ -358,9 +358,9 @@ class OverviewView {
 
     renderTacticalCards() {
         const safetyBadge = document.getElementById('overviewSafetyBadge');
-        const netCashVal = document.getElementById('overviewNetCashVal');
+        const grossCashVal = document.getElementById('overviewGrossCashVal');
         const creditDebtVal = document.getElementById('overviewCreditDebtVal');
-        const debtRatioVal = document.getElementById('overviewDebtRatioVal');
+        const netCashVal = document.getElementById('overviewNetCashVal');
 
         const ytdGrowthBadge = document.getElementById('overviewYtdGrowthBadge');
         const ytdNetGrowth = document.getElementById('overviewYtdNetGrowth');
@@ -372,7 +372,7 @@ class OverviewView {
 
         if (!netCashVal) return;
 
-        // 1. 財務安全防守線計算 (取最新一期銀行快照，排除股票虛擬帳戶)
+        // 1. 財務安全防守線計算 (Waterfall 扣抵模型：總流動現金 － 即期信用卡 ＝ 實質淨水位)
         const latestItems = this.getLatestBankAssets().filter(b => {
             const name = b.bankName || '';
             return !(name.includes('股票') || name.includes('ETF'));
@@ -393,9 +393,9 @@ class OverviewView {
         const absDebt = Math.abs(debtTotal);
         const debtRatio = depositTotal > 0 ? ((absDebt / depositTotal) * 100).toFixed(1) : '0.0';
 
-        netCashVal.textContent = `$${Math.round(netCash).toLocaleString()}`;
-        creditDebtVal.textContent = absDebt > 0 ? `-$${Math.round(absDebt).toLocaleString()}` : '$0';
-        debtRatioVal.textContent = `${debtRatio}%`;
+        if (grossCashVal) grossCashVal.textContent = `$${Math.round(depositTotal).toLocaleString()}`;
+        if (creditDebtVal) creditDebtVal.textContent = absDebt > 0 ? `-$${Math.round(absDebt).toLocaleString()}` : '$0';
+        if (netCashVal) netCashVal.textContent = `$${Math.round(netCash).toLocaleString()}`;
 
         if (safetyBadge) {
             const ratioNum = parseFloat(debtRatio);
@@ -411,9 +411,7 @@ class OverviewView {
             }
         }
 
-        // 財務安全防守線視覺進度條與提示 (水庫防守覆蓋模型)
-        const cashRatioText = document.getElementById('overviewCashRatioText');
-        const debtRatioText = document.getElementById('overviewDebtRatioText');
+        // 財務安全防守線視覺進度條與提示 (Waterfall 總現金池拆解)
         const cashRatioLabel = document.getElementById('overviewCashRatioLabel');
         const debtRatioLabel = document.getElementById('overviewDebtRatioLabel');
         const cashBar = document.getElementById('overviewCashBar');
@@ -426,20 +424,20 @@ class OverviewView {
         if (absDebt === 0) {
             cashShare = 100;
             debtShare = 0;
-            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質防守水位 <strong id="overviewCashRatioText">100.0%</strong>`;
-            if (debtRatioLabel) debtRatioLabel.innerHTML = `💳 負債侵蝕率 <strong id="overviewDebtRatioText">0.0%</strong>`;
+            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質淨防守水位 <strong id="overviewCashRatioText">100.0% ($${Math.round(netCash).toLocaleString()})</strong>`;
+            if (debtRatioLabel) debtRatioLabel.innerHTML = `💳 負債侵蝕率 <strong id="overviewDebtRatioText">0.0% ($0)</strong>`;
         } else if (netCash > 0 && depositTotal > 0) {
-            // 正常流動性充足：負債侵蝕部分 vs 實質安全厚度
+            // 正常流動性充足：以總流動現金為 100% 母體
             debtShare = Math.min(100, (absDebt / depositTotal) * 100);
             cashShare = Math.max(0, 100 - debtShare);
-            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質防守水位 <strong id="overviewCashRatioText">${cashShare.toFixed(1)}%</strong>`;
-            if (debtRatioLabel) debtRatioLabel.innerHTML = `💳 負債侵蝕率 <strong id="overviewDebtRatioText">${debtShare.toFixed(1)}%</strong>`;
+            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質淨防守水位 <strong id="overviewCashRatioText">${cashShare.toFixed(1)}% ($${Math.round(netCash).toLocaleString()})</strong>`;
+            if (debtRatioLabel) debtRatioLabel.innerHTML = `💳 負債侵蝕率 <strong id="overviewDebtRatioText">${debtShare.toFixed(1)}% ($${Math.round(absDebt).toLocaleString()})</strong>`;
         } else {
             // 負債超越現金儲備 (赤字)：防守線遭擊穿，水位歸零！
             cashShare = 0;
             debtShare = 100;
-            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質防守水位 <strong id="overviewCashRatioText">0.0% (防線遭擊穿)</strong>`;
-            if (debtRatioLabel) debtRatioLabel.innerHTML = `🚨 負債全面覆蓋 <strong id="overviewDebtRatioText">100.0% (超額負債)</strong>`;
+            if (cashRatioLabel) cashRatioLabel.innerHTML = `💧 實質淨防守水位 <strong id="overviewCashRatioText">0.0% (防線遭擊穿)</strong>`;
+            if (debtRatioLabel) debtRatioLabel.innerHTML = `🚨 負債全面覆蓋 <strong id="overviewDebtRatioText">100.0% (超額負債 -$${Math.abs(Math.round(netCash)).toLocaleString()})</strong>`;
         }
 
         if (cashBar) cashBar.style.width = `${cashShare.toFixed(1)}%`;
@@ -449,20 +447,20 @@ class OverviewView {
             const netCashNum = Math.round(netCash);
             const depositNum = Math.round(depositTotal);
             if (absDebt === 0) {
-                safetyTip.textContent = `💡 當前無即期信用卡負債，流動性儲備 $${depositNum.toLocaleString()} 極為充沛無虞。`;
+                safetyTip.textContent = `💡 當前無即期信用卡負債，總流動儲備 $${depositNum.toLocaleString()} 極為充沛無虞。`;
             } else {
                 const coverMultiple = (depositTotal / absDebt).toFixed(1);
                 const ratioNum = parseFloat(debtRatio);
                 if (ratioNum < 15) {
-                    safetyTip.textContent = `💡 總現金儲備 $${depositNum.toLocaleString()} 可覆蓋負債約 ${coverMultiple} 倍（實質淨流動性 $${netCashNum.toLocaleString()}），防守縱深極佳，無短期償債壓力。`;
+                    safetyTip.textContent = `💡 總現金儲備足以全額清償卡費 ${coverMultiple} 次；全額清償後，仍保有 $${netCashNum.toLocaleString()} 自由防守資金，防守縱深極佳。`;
                 } else if (ratioNum < 30) {
-                    safetyTip.textContent = `💡 現金儲備可覆蓋負債約 ${coverMultiple} 倍（實質淨流動性 $${netCashNum.toLocaleString()}），防守體質正常，請留意當月信用卡繳款日程。`;
+                    safetyTip.textContent = `💡 總現金儲備足以全額清償卡費 ${coverMultiple} 次；全額清償後，仍保有 $${netCashNum.toLocaleString()} 自由防守資金，防守體質正常。`;
                 } else if (ratioNum < 50) {
-                    safetyTip.textContent = `💡 即期負債比率偏高 (${debtRatio}%)，備用金覆蓋僅剩 ${coverMultiple} 倍（實質淨流動性 $${netCashNum.toLocaleString()}），建議維持適度流動資金以防突發支出。`;
+                    safetyTip.textContent = `💡 即期負債比率偏高 (${debtRatio}%)，總現金足以清償 ${coverMultiple} 次；繳清後自由資金剩餘 $${netCashNum.toLocaleString()}，建議適度撙節。`;
                 } else if (netCashNum >= 0) {
-                    safetyTip.textContent = `⚠️ 警戒：即期負債比率已達 ${debtRatio}%（覆蓋倍數 ${coverMultiple} 倍），建議優先清償信用卡款以避免流動性緊縮。`;
+                    safetyTip.textContent = `⚠️ 警戒：即期負債已達 ${debtRatio}%（可清償 ${coverMultiple} 次），繳清後僅存 $${netCashNum.toLocaleString()}，建議優先清理信用卡款。`;
                 } else {
-                    safetyTip.textContent = `⚠️ 警戒：即期負債已大幅超出流動儲備（實質赤字 -$${Math.abs(netCashNum).toLocaleString()}，負債比 ${debtRatio}%），防守線遭擊穿，請優先籌措資金償還！`;
+                    safetyTip.textContent = `🚨 警戒：即期負債已超出流動儲備（實質赤字 -$${Math.abs(netCashNum).toLocaleString()}，負債比 ${debtRatio}%），防守線遭擊穿，請優先籌措資金償還！`;
                 }
             }
         }

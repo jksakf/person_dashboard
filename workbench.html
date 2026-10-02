@@ -222,49 +222,37 @@
                             <span id="overviewSafetyBadge" class="wb-tag success">🟢 體質優良</span>
                         </div>
                         <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.6rem;">
-                            <div
-                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
-                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">實質流動現金儲備
-                                </div>
-                                <div class="mono" id="overviewNetCashVal"
-                                    style="font-weight:700; font-size:1.05rem; color:#38bdf8;">$0</div>
+                            <!-- 左卡：總流動現金儲備 (Gross Cash 母體) -->
+                            <div style="background:rgba(255,255,255,0.03); padding:0.65rem; border-radius:6px; border:1px solid rgba(255,255,255,0.06);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">總流動現金儲備</div>
+                                <div class="mono" id="overviewGrossCashVal" style="font-weight:700; font-size:1.1rem; color:var(--text-color);">$0</div>
+                                <div style="font-size:0.68rem; color:var(--text-muted); margin-top:0.2rem;">全部存款帳戶總量</div>
                             </div>
-                            <div
-                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
-                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">信用卡應繳負債
-                                </div>
-                                <div class="mono" id="overviewCreditDebtVal"
-                                    style="font-weight:700; font-size:1.05rem; color:var(--danger);">$0</div>
+                            <!-- 中卡：即期信用卡負債 (Current Liabilities 扣除項) -->
+                            <div style="background:rgba(239,68,68,0.04); padding:0.65rem; border-radius:6px; border:1px solid rgba(239,68,68,0.18);">
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">即期信用卡負債</div>
+                                <div class="mono" id="overviewCreditDebtVal" style="font-weight:700; font-size:1.1rem; color:var(--danger);">$0</div>
+                                <div style="font-size:0.68rem; color:var(--text-muted); margin-top:0.2rem;">本期佔用現金負債</div>
                             </div>
-                            <div
-                                style="background:rgba(255,255,255,0.03); padding:0.6rem; border-radius:6px; border:1px solid rgba(255,255,255,0.05);">
-                                <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:0.2rem;">流動負債比率
-                                </div>
-                                <div class="mono" id="overviewDebtRatioVal"
-                                    style="font-weight:700; font-size:1.05rem; color:var(--text-color);">0.0%</div>
+                            <!-- 右卡：實質淨防守水位 (Net Liquidity 核心底牌) -->
+                            <div style="background:rgba(14,165,233,0.09); padding:0.65rem; border-radius:6px; border:1px solid rgba(14,165,233,0.35); box-shadow:0 0 12px rgba(14,165,233,0.12);">
+                                <div style="font-size:0.75rem; color:#38bdf8; font-weight:600; margin-bottom:0.25rem;">實質淨防守水位</div>
+                                <div class="mono" id="overviewNetCashVal" style="font-weight:700; font-size:1.1rem; color:#38bdf8;">$0</div>
+                                <div style="font-size:0.68rem; color:#38bdf8; opacity:0.85; margin-top:0.2rem;">清償後自由防守金</div>
                             </div>
                         </div>
-                        <!-- 流動性與負債健康比重視覺進度條 -->
-                        <div style="margin-top:0.65rem;">
-                            <div
-                                style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.3rem;">
-                                <span style="color:#38bdf8;" id="overviewCashRatioLabel">💧 實質防守水位 <strong
-                                        id="overviewCashRatioText">82.0%</strong></span>
-                                <span style="color:var(--danger);" id="overviewDebtRatioLabel">💳 負債侵蝕率 <strong
-                                        id="overviewDebtRatioText">18.0%</strong></span>
+                        <!-- 流動性與負債健康比重視覺進度條 (Waterfall 進度條：100% 總現金池拆解) -->
+                        <div style="margin-top:0.75rem;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.35rem;">
+                                <span style="color:#38bdf8;" id="overviewCashRatioLabel">💧 實質淨防守水位 <strong id="overviewCashRatioText">0.0%</strong></span>
+                                <span style="color:var(--danger);" id="overviewDebtRatioLabel">💳 負債侵蝕率 <strong id="overviewDebtRatioText">0.0%</strong></span>
                             </div>
-                            <div
-                                style="height:6px; background:rgba(255,255,255,0.08); border-radius:3px; overflow:hidden; display:flex;">
-                                <div id="overviewCashBar"
-                                    style="width:82%; height:100%; background:#38bdf8; transition:width 0.3s ease;">
-                                </div>
-                                <div id="overviewDebtBar"
-                                    style="width:18%; height:100%; background:#ef4444; transition:width 0.3s ease;">
-                                </div>
+                            <div style="height:7px; background:rgba(255,255,255,0.08); border-radius:4px; overflow:hidden; display:flex;">
+                                <div id="overviewCashBar" style="width:0%; height:100%; background:#38bdf8; transition:width 0.3s ease;"></div>
+                                <div id="overviewDebtBar" style="width:0%; height:100%; background:#ef4444; transition:width 0.3s ease;"></div>
                             </div>
-                            <div id="overviewSafetyTip"
-                                style="font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
-                                💡 備用流動金可完全覆蓋現有負債約 4.5 倍，財務安全防守縱深充裕。
+                            <div id="overviewSafetyTip" style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem; line-height:1.4;">
+                                💡 現金儲備評估載入中...
                             </div>
                         </div>
                     </div>

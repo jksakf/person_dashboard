@@ -11,6 +11,43 @@ class BankView {
     // ==========================================
     // View 2: 銀行資產全表渲染
     // ==========================================
+    getRealCurrentMonth() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        return `${y}/${m}`;
+    }
+
+    ensureBankAssetsForMonth(targetMonth) {
+        if (!targetMonth) return [];
+        const normalizedMonth = targetMonth.replace('-', '/');
+        const existing = (this.data.bankAssets || []).filter(b => (b.date || '').startsWith(normalizedMonth));
+        if (existing.length > 0) return existing;
+
+        // 若當月尚無紀錄，尋找前一個最近的歷史月份進行結轉繼承
+        const months = this.getAvailableBankMonths().filter(m => m < normalizedMonth);
+        if (months.length === 0) return [];
+        const prevMonth = months[0];
+        const prevItems = (this.data.bankAssets || []).filter(b => (b.date || '').startsWith(prevMonth));
+        if (prevItems.length === 0) return [];
+
+        // 複製前月帳戶結餘作為新月份之期初開帳動態帳本
+        const newItems = [];
+        prevItems.forEach(item => {
+            const clone = JSON.parse(JSON.stringify(item));
+            clone.id = `bank_${Date.now()}_${Math.floor(Math.random() * 900) + 100}`;
+            clone.date = `${normalizedMonth}/01`;
+            this.data.bankAssets.unshift(clone);
+            newItems.push(clone);
+        });
+
+        if (!this.selectedBankMonth || this.selectedBankMonth < normalizedMonth) {
+            this.selectedBankMonth = normalizedMonth;
+        }
+
+        return newItems;
+    }
+
     getAvailableBankMonths() {
         const months = new Set();
         (this.data.bankAssets || []).forEach(b => {
@@ -21,6 +58,10 @@ class BankView {
     }
 
     getLatestBankAssets() {
+        // 先確保當前真實月份已自動開帳
+        const currentMonth = this.getRealCurrentMonth();
+        this.ensureBankAssetsForMonth(currentMonth);
+
         const months = this.getAvailableBankMonths();
         if (months.length === 0) return this.data.bankAssets || [];
         const latestM = months[0];
@@ -106,9 +147,15 @@ class BankView {
         const summaryStats = document.getElementById('bankSummaryStats');
         if (!tbody) return;
 
+        const currentRealMonth = this.getRealCurrentMonth();
+        this.ensureBankAssetsForMonth(currentRealMonth);
         const months = this.getAvailableBankMonths();
         if (monthSelect) {
-            monthSelect.innerHTML = months.map(m => `<option value="${m}" ${m === this.selectedBankMonth ? 'selected' : ''}>${m} 對帳快照</option>`).join('');
+            monthSelect.innerHTML = months.map(m => {
+                const isCurrent = m === currentRealMonth;
+                const label = isCurrent ? `⚡ ${m} (當期即時動態帳本)` : `📁 ${m} (月末結算快照)`;
+                return `<option value="${m}" ${m === this.selectedBankMonth ? 'selected' : ''}>${label}</option>`;
+            }).join('');
         }
 
         const activeMonth = this.selectedBankMonth || (months.length > 0 ? months[0] : '');

@@ -368,20 +368,32 @@ class DailyLedgerView {
         const amt = parseFloat(record.amount) || 0;
         if (amt === 0) return;
 
-        // 取得最新一期月份之銀行資產 (兼顧 this 與 this.app 委派調用)
-        const getLatest = typeof this.getLatestBankAssets === 'function'
-            ? this.getLatestBankAssets.bind(this)
-            : (this.app && typeof this.app.getLatestBankAssets === 'function' ? this.app.getLatestBankAssets.bind(this.app) : null);
-        const latestBankAssets = getLatest ? getLatest() : [];
-        if (!latestBankAssets || latestBankAssets.length === 0) return;
+        // 取得該筆記帳所屬月份 (例如 '2026/10')
+        const recordMonth = (record.date || '').slice(0, 7).replace('-', '/') || this.getCurrentMonthStr().replace('-', '/');
+        
+        // 確保該月份已自動開帳 (保護歷史月份快照，不竄改前月)
+        const app = this.app || (typeof window !== 'undefined' ? window.app : this);
+        if (typeof app.ensureBankAssetsForMonth === 'function') {
+            app.ensureBankAssetsForMonth(recordMonth);
+        }
+
+        // 取得該月份專屬之帳戶清單
+        let targetMonthAssets = (this.data.bankAssets || []).filter(b => (b.date || '').startsWith(recordMonth));
+        if (targetMonthAssets.length === 0) {
+            const getLatest = typeof this.getLatestBankAssets === 'function'
+                ? this.getLatestBankAssets.bind(this)
+                : (this.app && typeof this.app.getLatestBankAssets === 'function' ? this.app.getLatestBankAssets.bind(this.app) : null);
+            targetMonthAssets = getLatest ? getLatest() : [];
+        }
+        if (!targetMonthAssets || targetMonthAssets.length === 0) return;
 
         // 智慧帳戶尋找器：支援完全相等、忽略大小寫與包含字串（例如 Richart 自動匹配 台新Richart）
         const findAccount = (accName) => {
             if (!accName) return null;
             const clean = accName.trim().toLowerCase();
-            return latestBankAssets.find(b => (b.bankName || '').trim().toLowerCase() === clean)
-                || latestBankAssets.find(b => (b.bankName || '').toLowerCase().includes(clean))
-                || latestBankAssets.find(b => clean.includes((b.bankName || '').toLowerCase()));
+            return targetMonthAssets.find(b => (b.bankName || '').trim().toLowerCase() === clean)
+                || targetMonthAssets.find(b => (b.bankName || '').toLowerCase().includes(clean))
+                || targetMonthAssets.find(b => clean.includes((b.bankName || '').toLowerCase()));
         };
 
         const updateAccountBalance = (target, delta) => {
