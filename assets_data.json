@@ -127,9 +127,9 @@
       "bankName": "富邦",
       "accountType": "活存",
       "currency": "TWD",
-      "originalAmount": 70722,
+      "originalAmount": 80722,
       "exchangeRate": 1,
-      "twdAmount": 70722,
+      "twdAmount": 80722,
       "note": ""
     },
     {
@@ -3613,7 +3613,7 @@
       "stockFeeRate": 0.001425,
       "stockTaxRate": 0.003
     },
-    "lastUpdated": "2026-10-02T04:07:33.975Z",
+    "lastUpdated": "2026-10-02T13:05:09.885Z",
     "version": "1.2.1",
     "accountList": [
       "富邦",
@@ -5775,6 +5775,16 @@
     "6862": 138
   },
   "dailyRecords": [
+    {
+      "id": "rec_1790946144093_449",
+      "date": "2026/10/02",
+      "type": "income",
+      "category": "💼 薪資",
+      "amount": 10000,
+      "account": "富邦",
+      "toAccount": "",
+      "note": ""
+    },
     {
       "id": "rec_1790913819459_506",
       "date": "2026/10/02",

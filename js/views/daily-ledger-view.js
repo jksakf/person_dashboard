@@ -116,19 +116,19 @@ class DailyLedgerView {
         const daysInMonth = new Date(year, month, 0).getDate();
         const daysInPrevMonth = new Date(year, month - 1, 0).getDate();
 
-        // 整理當月各日期的花費總額與是否有收入
+        // 整理當月各日期的支出、收入與轉帳
         const dailySummary = {};
         records.forEach(r => {
             if ((r.date || '').startsWith(monthPrefix)) {
                 const d = r.date;
                 if (!dailySummary[d]) {
-                    dailySummary[d] = { expense: 0, hasIncome: false, hasTransfer: false };
+                    dailySummary[d] = { expense: 0, income: 0, hasTransfer: false };
                 }
                 const amt = parseFloat(r.amount) || 0;
                 if (r.type === 'expense') {
                     dailySummary[d].expense += amt;
                 } else if (r.type === 'income') {
-                    dailySummary[d].hasIncome = true;
+                    dailySummary[d].income += amt;
                 } else if (r.type === 'transfer') {
                     dailySummary[d].hasTransfer = true;
                 }
@@ -153,29 +153,74 @@ class DailyLedgerView {
         for (let day = 1; day <= daysInMonth; day++) {
             const dayFormatted = day < 10 ? `0${day}` : `${day}`;
             const fullDateStr = `${monthPrefix}/${dayFormatted}`;
-            const summary = dailySummary[fullDateStr] || { expense: 0, hasIncome: false };
+            const summary = dailySummary[fullDateStr] || { expense: 0, income: 0, hasTransfer: false };
             const isSelected = this.selectedDate === fullDateStr;
             const isToday = todayStr === fullDateStr;
 
-            // 計算熱力等級 (0-4)
+            const exp = summary.expense || 0;
+            const inc = summary.income || 0;
+            const net = inc - exp;
+            const hasExp = exp > 0;
+            const hasInc = inc > 0;
+
+            // 計算熱力與狀態邊線
             let heatClass = '';
-            const exp = summary.expense;
             if (exp > 3000) heatClass = 'heat-4';
             else if (exp > 1500) heatClass = 'heat-3';
             else if (exp > 500) heatClass = 'heat-2';
             else if (exp > 0) heatClass = 'heat-1';
+            else if (inc > 0) heatClass = 'income-only';
+
+            // 組織當日金額與階層化標籤
+            let amountHtml = '';
+            let titleText = `${fullDateStr}`;
+
+            if (hasInc && hasExp) {
+                // 雙向收支：Hero 顯示淨額，下方膠囊並列收入與支出
+                const netSign = net >= 0 ? '+' : '-';
+                const netClass = net >= 0 ? 'net-positive' : 'net-negative';
+                titleText += ` ｜ 收入: +$${Math.round(inc).toLocaleString()} ｜ 支出: -$${Math.round(exp).toLocaleString()} ｜ 淨收支: ${netSign}$${Math.round(Math.abs(net)).toLocaleString()}`;
+                amountHtml = `
+                <div class="wb-day-hero-net ${netClass}">
+                    ${netSign}$${Math.round(Math.abs(net)).toLocaleString()}
+                </div>
+                <div class="wb-day-micro-breakdown">
+                    <span class="wb-inc-pill">+${Math.round(inc).toLocaleString()}</span>
+                    <span class="wb-exp-pill">-${Math.round(exp).toLocaleString()}</span>
+                </div>`;
+            } else if (hasInc) {
+                // 純收入
+                titleText += ` ｜ 當日收入: +$${Math.round(inc).toLocaleString()}`;
+                amountHtml = `
+                <div class="wb-day-hero-net net-positive">
+                    +$${Math.round(inc).toLocaleString()}
+                </div>`;
+            } else if (hasExp) {
+                // 純支出
+                titleText += ` ｜ 當日支出: -$${Math.round(exp).toLocaleString()}`;
+                amountHtml = `
+                <div class="wb-day-hero-net net-negative">
+                    -$${Math.round(exp).toLocaleString()}
+                </div>`;
+            } else if (summary.hasTransfer) {
+                titleText += ` ｜ 帳戶轉帳`;
+                amountHtml = `<div class="wb-day-transfer-tag">🔄 轉帳</div>`;
+            }
 
             html += `
             <div class="wb-calendar-day ${heatClass} ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}" 
                  onclick="app.selectLedgerDate('${fullDateStr}')"
-                 title="${fullDateStr} 當日支出: $${Math.round(exp).toLocaleString()}">
+                 title="${titleText}">
                 <div class="wb-day-header">
                     <span class="wb-day-number">${day}</span>
                     <div class="wb-day-badges">
-                        ${summary.hasIncome ? '<span class="wb-income-dot" title="當日有收入入帳"></span>' : ''}
+                        ${hasInc && !hasExp ? '<span class="wb-income-dot" title="當日收入"></span>' : ''}
+                        ${summary.hasTransfer ? '<span class="wb-transfer-dot" title="當日有轉帳"></span>' : ''}
                     </div>
                 </div>
-                ${exp > 0 ? `<div class="wb-day-expense">-$${Math.round(exp).toLocaleString()}</div>` : ''}
+                <div class="wb-day-body">
+                    ${amountHtml}
+                </div>
             </div>`;
         }
 
@@ -226,8 +271,16 @@ class DailyLedgerView {
         });
 
         if (dayTotalEl) {
-            dayTotalEl.textContent = `當日支出: $${Math.round(dayExpense).toLocaleString()}` + 
-                (dayIncome > 0 ? ` ｜ 收入: +$${Math.round(dayIncome).toLocaleString()}` : '');
+            let parts = [];
+            if (dayExpense > 0) parts.push(`支出: -$${Math.round(dayExpense).toLocaleString()}`);
+            if (dayIncome > 0) parts.push(`收入: +$${Math.round(dayIncome).toLocaleString()}`);
+            if (dayExpense > 0 && dayIncome > 0) {
+                const net = dayIncome - dayExpense;
+                parts.push(`淨現金流: ${net >= 0 ? '+' : '-'}$${Math.round(Math.abs(net)).toLocaleString()}`);
+            } else if (dayExpense === 0 && dayIncome === 0) {
+                parts.push(`無收支`);
+            }
+            dayTotalEl.innerHTML = parts.map(p => `<span>${p}</span>`).join(' <span style="opacity:0.4;">｜</span> ');
         }
 
         if (dayRecords.length === 0) {

@@ -604,6 +604,28 @@ header.wb-header {
     border-color: var(--input-focus);
 }
 
+.wb-select option {
+    background-color: #1e293b;
+    color: #f8fafc;
+    padding: 6px 10px;
+}
+
+[data-theme="light"] .wb-select option {
+    background-color: #ffffff;
+    color: #0f172a;
+}
+
+.wb-select optgroup {
+    font-weight: 700;
+    color: var(--primary);
+    background-color: #0f172a;
+}
+
+[data-theme="light"] .wb-select optgroup {
+    background-color: #f1f5f9;
+    color: #0284c7;
+}
+
 .wb-form-actions {
     display: flex;
     gap: 0.5rem;
@@ -1078,45 +1100,121 @@ header.wb-header {
     box-shadow: 0 0 4px var(--success);
 }
 
-.wb-day-expense {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--text-muted);
-    text-align: right;
+/* 日曆收支與淨流動階層化呈現 */
+.wb-day-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
     margin-top: auto;
-    font-family: monospace;
-    letter-spacing: -0.2px;
+    width: 100%;
 }
 
-/* 熱力等級邊線 */
+.wb-day-hero-net {
+    font-size: 0.88rem;
+    font-weight: 700;
+    font-family: var(--font-mono, monospace);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+    text-align: right;
+    transition: transform 0.15s ease;
+}
+
+.wb-calendar-day:hover .wb-day-hero-net {
+    transform: scale(1.03);
+}
+
+.wb-day-hero-net.net-positive {
+    color: #10b981;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+.wb-day-hero-net.net-negative {
+    color: #f87171;
+}
+
+.wb-day-micro-breakdown {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.wb-inc-pill {
+    font-size: 0.66rem;
+    font-weight: 600;
+    font-family: var(--font-mono, monospace);
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+    line-height: 1.1;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.wb-exp-pill {
+    font-size: 0.66rem;
+    font-weight: 600;
+    font-family: var(--font-mono, monospace);
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+    line-height: 1.1;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.wb-day-transfer-tag {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.wb-transfer-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--primary);
+    box-shadow: 0 0 4px var(--primary);
+}
+
+/* 熱力等級邊線與背景光 */
+.wb-calendar-day.income-only {
+    border-left: 3px solid rgba(16, 185, 129, 0.9);
+    background: rgba(16, 185, 129, 0.03);
+}
+
 .wb-calendar-day.heat-1 {
     border-left: 3px solid rgba(52, 211, 153, 0.8);
 }
-.wb-calendar-day.heat-1 .wb-day-expense {
-    color: #34d399;
+.wb-calendar-day.heat-1 .wb-day-hero-net.net-negative {
+    color: #fca5a5;
 }
 
 .wb-calendar-day.heat-2 {
     border-left: 3px solid rgba(234, 179, 8, 0.85);
 }
-.wb-calendar-day.heat-2 .wb-day-expense {
-    color: #facc15;
+.wb-calendar-day.heat-2 .wb-day-hero-net.net-negative {
+    color: #f87171;
 }
 
 .wb-calendar-day.heat-3 {
     border-left: 3px solid rgba(249, 115, 22, 0.9);
+    background: rgba(249, 115, 22, 0.03);
 }
-.wb-calendar-day.heat-3 .wb-day-expense {
-    color: #fb923c;
+.wb-calendar-day.heat-3 .wb-day-hero-net.net-negative {
+    color: #fb7185;
 }
 
 .wb-calendar-day.heat-4 {
     border-left: 3px solid rgba(239, 68, 68, 1);
-    background: rgba(239, 68, 68, 0.05);
+    background: rgba(239, 68, 68, 0.06);
 }
-.wb-calendar-day.heat-4 .wb-day-expense {
-    color: #f87171;
+.wb-calendar-day.heat-4 .wb-day-hero-net.net-negative {
+    color: #f43f5e;
     font-weight: 800;
+    text-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
 }
 
 /* 右側時間軸明細側欄 */

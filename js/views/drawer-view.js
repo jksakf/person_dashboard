@@ -88,6 +88,182 @@ class DrawerView {
         if (backdrop) backdrop.classList.remove('open');
     }
 
+    // ==========================================
+    // 下拉選單資料池與動態互動輔助函式
+    // ==========================================
+    getAvailableAccounts() {
+        const set = new Set();
+        (this.data.meta?.accountList || []).forEach(acc => {
+            const str = typeof acc === 'string' ? acc.trim() : (acc && (acc.value || acc.name || ''));
+            if (str && typeof str === 'string' && !str.includes('[object')) set.add(str);
+        });
+        (this.data.bankAssets || []).forEach(b => {
+            const str = typeof b.bankName === 'string' ? b.bankName.trim() : '';
+            if (str && !str.includes('[object') && str !== '銀行帳戶') set.add(str);
+        });
+        if (set.size === 0) {
+            ['富邦活存', '中信生活費', '台新Richart', '玉山證券交割', '國泰信用卡', '玉山信用卡'].forEach(a => set.add(a));
+        }
+        return Array.from(set);
+    }
+
+    getAvailableStocks() {
+        const holdingMap = new Map();
+        const watchlistMap = new Map();
+
+        (this.data.transactions || []).forEach(t => {
+            if (t.symbol) {
+                holdingMap.set(t.symbol.trim(), t.name || t.symbol);
+            }
+        });
+
+        (this.data.meta?.stockDict || []).forEach(s => {
+            if (s.symbol) {
+                watchlistMap.set(s.symbol.trim(), s.name || s.symbol);
+            }
+        });
+
+        if (holdingMap.size === 0 && watchlistMap.size === 0) {
+            watchlistMap.set('006208', '富邦台50');
+            watchlistMap.set('2330', '台積電');
+            watchlistMap.set('00878', '國泰永續高股息');
+            watchlistMap.set('VOO', 'Vanguard S&P 500');
+        }
+
+        return { holdingMap, watchlistMap };
+    }
+
+    onStockSymbolSelectChange(symVal) {
+        if (!this.editingItem || this.editingType !== 'transaction') return;
+        if (symVal === '__CUSTOM_STOCK__') {
+            const customCode = prompt('請輸入股票代號（例如：2330 或 QQQ）：');
+            const selectEl = document.getElementById('drawer_tx_symbol');
+            if (!customCode || !customCode.trim()) {
+                if (selectEl) selectEl.value = this.editingItem.symbol || '';
+                return;
+            }
+            const code = customCode.trim().toUpperCase();
+            const customName = prompt(`請輸入股票名稱（例如：台積電）：`, code) || code;
+            const name = customName.trim();
+
+            if (selectEl) {
+                const opt = document.createElement('option');
+                opt.value = code;
+                opt.textContent = `${code} - ${name}`;
+                opt.selected = true;
+                selectEl.insertBefore(opt, selectEl.lastElementChild);
+            }
+
+            if (!this.data.meta.stockDict) this.data.meta.stockDict = [];
+            const exist = this.data.meta.stockDict.find(s => s.symbol.toUpperCase() === code);
+            if (!exist) {
+                this.data.meta.stockDict.push({ symbol: code, name: name });
+            }
+
+            this.editingItem.symbol = code;
+            this.editingItem.name = name;
+            const nameInput = document.getElementById('drawer_stock_name');
+            if (nameInput) nameInput.value = name;
+            this.onTradeEstimateChange();
+        } else {
+            this.onStockCodeInput(symVal);
+        }
+    }
+
+    onBankNameSelectChange(val) {
+        if (!this.editingItem || this.editingType !== 'bankAsset') return;
+        if (val === '__NEW_BANK__') {
+            const newBank = prompt('請輸入新的銀行或帳戶名稱（例如：國泰生活費）：');
+            const selectEl = document.getElementById('drawer_bank_name');
+            if (!newBank || !newBank.trim()) {
+                if (selectEl) selectEl.value = this.editingItem.bankName || '';
+                return;
+            }
+            const trimmed = newBank.trim();
+            if (!this.data.meta.accountList) this.data.meta.accountList = [];
+            if (!this.data.meta.accountList.includes(trimmed)) {
+                this.data.meta.accountList.push(trimmed);
+            }
+            if (selectEl) {
+                const opt = document.createElement('option');
+                opt.value = trimmed;
+                opt.textContent = trimmed;
+                opt.selected = true;
+                selectEl.insertBefore(opt, selectEl.lastElementChild);
+            }
+            this.onBankNameInput(trimmed);
+        } else {
+            this.onBankNameInput(val);
+        }
+    }
+
+    onDailyCategorySelectChange(val) {
+        if (!this.editingItem || this.editingType !== 'dailyRecord') return;
+        const currentType = this.editingItem.type || 'expense';
+        if (val === '__NEW_CAT__') {
+            const newCat = prompt('請輸入自訂記帳類別名稱（例如：🐶 寵物支出）：');
+            const selectEl = document.getElementById('drawer_daily_cat');
+            if (!newCat || !newCat.trim()) {
+                if (selectEl) selectEl.value = this.editingItem.category || '';
+                return;
+            }
+            const trimmed = newCat.trim();
+            if (this.dailyLedgerView && this.dailyLedgerView.categories[currentType]) {
+                if (!this.dailyLedgerView.categories[currentType].includes(trimmed)) {
+                    this.dailyLedgerView.categories[currentType].push(trimmed);
+                }
+            }
+            if (selectEl) {
+                const opt = document.createElement('option');
+                opt.value = trimmed;
+                opt.textContent = trimmed;
+                opt.selected = true;
+                selectEl.insertBefore(opt, selectEl.lastElementChild);
+            }
+            this.editingItem.category = trimmed;
+        } else {
+            this.editingItem.category = val;
+        }
+    }
+
+    onDailyAccountSelectChange(val, elId) {
+        if (!this.editingItem || this.editingType !== 'dailyRecord') return;
+        if (val === '__NEW_ACC__') {
+            const newAcc = prompt('請輸入銀行/帳戶名稱（例如：國泰生活費）：');
+            const selectEl = document.getElementById(elId);
+            if (!newAcc || !newAcc.trim()) {
+                if (selectEl) selectEl.value = (elId === 'drawer_daily_account' ? this.editingItem.account : this.editingItem.toAccount) || '';
+                return;
+            }
+            const trimmed = newAcc.trim();
+            if (!this.data.meta.accountList) this.data.meta.accountList = [];
+            if (!this.data.meta.accountList.includes(trimmed)) {
+                this.data.meta.accountList.push(trimmed);
+            }
+            ['drawer_daily_account', 'drawer_daily_to_account'].forEach(id => {
+                const s = document.getElementById(id);
+                if (s) {
+                    const opt = document.createElement('option');
+                    opt.value = trimmed;
+                    opt.textContent = trimmed;
+                    s.insertBefore(opt, s.lastElementChild);
+                }
+            });
+            if (selectEl) selectEl.value = trimmed;
+            if (elId === 'drawer_daily_account') {
+                this.editingItem.account = trimmed;
+            } else {
+                this.editingItem.toAccount = trimmed;
+            }
+        } else {
+            if (elId === 'drawer_daily_account') {
+                this.editingItem.account = val;
+            } else {
+                this.editingItem.toAccount = val;
+            }
+        }
+    }
+
     // Datalist 自動帶出股票名稱
     onStockCodeInput(symbolVal) {
         if (!this.editingItem) return;
@@ -242,6 +418,33 @@ class DrawerView {
                 badge.className = `wb-tag ${item.action === '買入' ? 'buy' : 'sell'}`;
             }
 
+            const { holdingMap, watchlistMap } = this.getAvailableStocks();
+            let stockOptionsHtml = '<option value="">-- 請選擇股票標的 --</option>';
+
+            if (item.symbol && !holdingMap.has(item.symbol) && !watchlistMap.has(item.symbol)) {
+                stockOptionsHtml += `<option value="${item.symbol}" selected>${item.symbol} - ${item.name || item.symbol}</option>`;
+            }
+
+            if (holdingMap.size > 0) {
+                stockOptionsHtml += '<optgroup label="📦 歷史與庫存持股">';
+                holdingMap.forEach((name, sym) => {
+                    stockOptionsHtml += `<option value="${sym}" ${item.symbol === sym ? 'selected' : ''}>${sym} - ${name}</option>`;
+                });
+                stockOptionsHtml += '</optgroup>';
+            }
+
+            if (watchlistMap.size > 0) {
+                stockOptionsHtml += '<optgroup label="⭐ 常用觀察標的">';
+                watchlistMap.forEach((name, sym) => {
+                    if (!holdingMap.has(sym)) {
+                        stockOptionsHtml += `<option value="${sym}" ${item.symbol === sym ? 'selected' : ''}>${sym} - ${name}</option>`;
+                    }
+                });
+                stockOptionsHtml += '</optgroup>';
+            }
+
+            stockOptionsHtml += '<option value="__CUSTOM_STOCK__">➕ 自訂輸入其他標的...</option>';
+
             body.innerHTML = `
             <div class="wb-form-grid">
                 <div class="wb-form-group">
@@ -258,8 +461,10 @@ class DrawerView {
                 </div>
 
                 <div class="wb-form-group">
-                    <label class="wb-label">股票代號 (支援下拉挑選或輸入)</label>
-                    <input type="text" class="wb-input mono" id="drawer_tx_symbol" list="stockCodeList" value="${item.symbol || ''}" placeholder="例如: 006208" oninput="app.onStockCodeInput(this.value)">
+                    <label class="wb-label">股票標的 (下拉全覽挑選)</label>
+                    <select class="wb-select mono" id="drawer_tx_symbol" onchange="app.onStockSymbolSelectChange(this.value)">
+                        ${stockOptionsHtml}
+                    </select>
                 </div>
 
                 <div class="wb-form-group">
@@ -333,6 +538,16 @@ class DrawerView {
                 badge.style = meta.style;
             }
 
+            const accounts = this.getAvailableAccounts();
+            let bankOptionsHtml = '<option value="">-- 請選擇銀行/帳戶 --</option>';
+            if (item.bankName && !accounts.includes(item.bankName)) {
+                bankOptionsHtml += `<option value="${item.bankName}" selected>${item.bankName}</option>`;
+            }
+            accounts.forEach(acc => {
+                bankOptionsHtml += `<option value="${acc}" ${item.bankName === acc ? 'selected' : ''}>${acc}</option>`;
+            });
+            bankOptionsHtml += '<option value="__NEW_BANK__">➕ 自訂新銀行帳戶...</option>';
+
             body.innerHTML = `
             <div class="wb-form-grid">
                 <div class="wb-form-group">
@@ -341,8 +556,10 @@ class DrawerView {
                 </div>
 
                 <div class="wb-form-group">
-                    <label class="wb-label">銀行/帳戶名稱 (支援下拉挑選或輸入)</label>
-                    <input type="text" class="wb-input" id="drawer_bank_name" list="bankAccountList" value="${item.bankName || ''}" placeholder="例如: 富邦、元大CMA" oninput="app.onBankNameInput(this.value)">
+                    <label class="wb-label">銀行/帳戶名稱 (下拉全覽挑選)</label>
+                    <select class="wb-select" id="drawer_bank_name" onchange="app.onBankNameSelectChange(this.value)">
+                        ${bankOptionsHtml}
+                    </select>
                 </div>
 
                 <div class="wb-form-group">
@@ -401,10 +618,33 @@ class DrawerView {
             }
 
             const categories = (this.dailyLedgerView && this.dailyLedgerView.categories[item.type]) || ['🍜 飲食', '🚗 交通', '🛍️ 購物', '☕ 飲品點心', '🏠 居住水電', '🎬 休閒娛樂'];
-            let catOptions = '';
+            let catOptions = '<option value="">-- 請選擇收支類別 --</option>';
+            if (item.category && !categories.includes(item.category)) {
+                catOptions += `<option value="${item.category}" selected>${item.category}</option>`;
+            }
             categories.forEach(c => {
                 catOptions += `<option value="${c}" ${item.category === c ? 'selected' : ''}>${c}</option>`;
             });
+            catOptions += '<option value="__NEW_CAT__">➕ 自訂新類別...</option>';
+
+            const accounts = this.getAvailableAccounts();
+            let dailyAccOptions = '<option value="">-- 請選擇帳戶 --</option>';
+            if (item.account && !accounts.includes(item.account)) {
+                dailyAccOptions += `<option value="${item.account}" selected>${item.account}</option>`;
+            }
+            accounts.forEach(acc => {
+                dailyAccOptions += `<option value="${acc}" ${item.account === acc ? 'selected' : ''}>${acc}</option>`;
+            });
+            dailyAccOptions += '<option value="__NEW_ACC__">➕ 自訂新帳戶...</option>';
+
+            let dailyToAccOptions = '<option value="">-- 請選擇轉入帳戶 --</option>';
+            if (item.toAccount && !accounts.includes(item.toAccount)) {
+                dailyToAccOptions += `<option value="${item.toAccount}" selected>${item.toAccount}</option>`;
+            }
+            accounts.forEach(acc => {
+                dailyToAccOptions += `<option value="${acc}" ${item.toAccount === acc ? 'selected' : ''}>${acc}</option>`;
+            });
+            dailyToAccOptions += '<option value="__NEW_ACC__">➕ 自訂新帳戶...</option>';
 
             body.innerHTML = `
             <div class="wb-form-grid">
@@ -423,11 +663,10 @@ class DrawerView {
                 </div>
 
                 <div class="wb-form-group">
-                    <label class="wb-label">收支類別 (可選或手動輸入)</label>
-                    <input type="text" class="wb-input" id="drawer_daily_cat" list="dailyCatList" value="${item.category || ''}" placeholder="例如: 🍜 飲食">
-                    <datalist id="dailyCatList">
+                    <label class="wb-label">收支類別 (下拉全覽挑選)</label>
+                    <select class="wb-select" id="drawer_daily_cat" onchange="app.onDailyCategorySelectChange(this.value)">
                         ${catOptions}
-                    </datalist>
+                    </select>
                 </div>
 
                 <div class="wb-form-group">
@@ -437,12 +676,16 @@ class DrawerView {
 
                 <div class="wb-form-group" id="group_daily_account">
                     <label class="wb-label">${item.type === 'income' ? '入帳銀行帳戶' : (item.type === 'transfer' ? '轉出銀行帳戶' : '扣款銀行帳戶')}</label>
-                    <input type="text" class="wb-input" id="drawer_daily_account" list="bankAccountList" value="${item.account || ''}" placeholder="請選擇或輸入帳戶">
+                    <select class="wb-select" id="drawer_daily_account" onchange="app.onDailyAccountSelectChange(this.value, 'drawer_daily_account')">
+                        ${dailyAccOptions}
+                    </select>
                 </div>
 
                 <div class="wb-form-group" id="group_daily_to_account" style="${item.type === 'transfer' ? '' : 'display:none;'}">
                     <label class="wb-label">轉入銀行帳戶</label>
-                    <input type="text" class="wb-input" id="drawer_daily_to_account" list="bankAccountList" value="${item.toAccount || ''}" placeholder="請選擇轉入帳戶">
+                    <select class="wb-select" id="drawer_daily_to_account" onchange="app.onDailyAccountSelectChange(this.value, 'drawer_daily_to_account')">
+                        ${dailyToAccOptions}
+                    </select>
                 </div>
 
                 <div class="wb-form-group">
@@ -474,15 +717,16 @@ class DrawerView {
         if (accLabel) {
             accLabel.textContent = type === 'income' ? '入帳銀行帳戶' : (type === 'transfer' ? '轉出銀行帳戶' : '扣款銀行帳戶');
         }
-        const catInput = document.getElementById('drawer_daily_cat');
-        const catList = document.getElementById('dailyCatList');
-        if (catList && this.dailyLedgerView) {
+        const catSelect = document.getElementById('drawer_daily_cat');
+        if (catSelect && this.dailyLedgerView) {
             const categories = this.dailyLedgerView.categories[type] || [];
-            let catOptions = '';
+            let catOptions = '<option value="">-- 請選擇收支類別 --</option>';
             categories.forEach(c => catOptions += `<option value="${c}">${c}</option>`);
-            catList.innerHTML = catOptions;
-            if (categories.length > 0 && catInput) {
-                catInput.value = categories[0];
+            catOptions += '<option value="__NEW_CAT__">➕ 自訂新類別...</option>';
+            catSelect.innerHTML = catOptions;
+            if (categories.length > 0) {
+                catSelect.value = categories[0];
+                this.editingItem.category = categories[0];
             }
         }
     }
