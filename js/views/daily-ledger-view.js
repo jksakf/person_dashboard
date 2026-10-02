@@ -311,7 +311,7 @@ class DailyLedgerView {
                 <div class="wb-record-left">
                     <div class="wb-record-cat-icon">${icon}</div>
                     <div class="wb-record-info">
-                        <div class="wb-record-title">${r.category || '一般支出'} ${r.note ? `<span style="font-weight:normal; color:var(--text-muted); font-size:0.8rem;">· ${r.note}</span>` : ''}</div>
+                        <div class="wb-record-title">${r.category || '一般支出'} ${r.note ? `<span class="wb-record-note">· ${r.note}</span>` : ''}</div>
                         <div class="wb-record-meta">
                             <span>💳 ${r.account || '未指定帳戶'}</span>
                             ${r.toAccount ? `<span>➔ ${r.toAccount}</span>` : ''}
