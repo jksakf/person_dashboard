@@ -177,61 +177,56 @@ class DailyLedgerView {
                 heatClass = 'heat-1';
             }
 
-            // 例外導向警示微章 (Exception-based Alerts)
-            let badgeHtml = '';
-            if (inc >= 5000) {
-                badgeHtml += `<span class="wb-day-badge-icon" title="大額進帳: +$${Math.round(inc).toLocaleString()}">💰</span>`;
-            }
-            if (exp > 3000) {
-                badgeHtml += `<span class="wb-day-badge-icon" title="警戒超支: -$${Math.round(exp).toLocaleString()}">🔥</span>`;
-            }
-
-            // 組織當日金額與階層化標籤
+            // 組織當日金額與居中高對比發光牌 (Centered Pill Badge)
             let amountHtml = '';
             let titleText = `${fullDateStr}`;
 
             if (hasInc && hasExp) {
-                // 雙向收支：Hero 顯示淨額，下方以精緻髮絲字體並列收入與支出明細
+                // 雙向收支：居中膠囊顯示淨額，下方附帶微型雙向註解
                 const netSign = net >= 0 ? '+' : '-';
                 const netClass = net >= 0 ? 'net-positive' : 'net-negative';
+                const pillClass = net >= 0 ? 'pill-positive' : 'pill-negative';
                 titleText += ` ｜ 收入: +$${Math.round(inc).toLocaleString()} ｜ 支出: -$${Math.round(exp).toLocaleString()} ｜ 淨收支: ${netSign}$${Math.round(Math.abs(net)).toLocaleString()}`;
                 amountHtml = `
-                <div class="wb-day-hero-net ${netClass}">
-                    ${netSign}$${Math.round(Math.abs(net)).toLocaleString()}
-                </div>
-                <div class="wb-day-hairline-breakdown">
-                    <span class="wb-hairline-inc">+${Math.round(inc).toLocaleString()}</span>
-                    <span class="wb-hairline-sep">｜</span>
-                    <span class="wb-hairline-exp">-${Math.round(exp).toLocaleString()}</span>
+                <div class="wb-day-pill-badge ${pillClass}">
+                    <span class="wb-day-pill-amount ${netClass}">${netSign}$${Math.round(Math.abs(net)).toLocaleString()}</span>
+                    <div class="wb-day-pill-subnote">
+                        <span class="wb-pill-sub-inc">+${Math.round(inc).toLocaleString()}</span>
+                        <span class="wb-pill-sub-sep">/</span>
+                        <span class="wb-pill-sub-exp">-${Math.round(exp).toLocaleString()}</span>
+                    </div>
                 </div>`;
             } else if (hasInc) {
                 // 純收入
                 titleText += ` ｜ 當日收入: +$${Math.round(inc).toLocaleString()}`;
                 amountHtml = `
-                <div class="wb-day-hero-net net-positive">
-                    +$${Math.round(inc).toLocaleString()}
+                <div class="wb-day-pill-badge pill-positive">
+                    <span class="wb-day-pill-amount net-positive">+$${Math.round(inc).toLocaleString()}</span>
                 </div>`;
             } else if (hasExp) {
                 // 純支出
                 titleText += ` ｜ 當日支出: -$${Math.round(exp).toLocaleString()}`;
                 amountHtml = `
-                <div class="wb-day-hero-net net-negative">
-                    -$${Math.round(exp).toLocaleString()}
+                <div class="wb-day-pill-badge pill-negative">
+                    <span class="wb-day-pill-amount net-negative">-$${Math.round(exp).toLocaleString()}</span>
                 </div>`;
             } else if (summary.hasTransfer) {
                 titleText += ` ｜ 帳戶轉帳`;
-                amountHtml = `<div class="wb-day-transfer-tag">🔄 轉帳</div>`;
+                amountHtml = `
+                <div class="wb-day-pill-badge">
+                    <span class="wb-day-transfer-tag">🔄 轉帳</span>
+                </div>`;
             }
+
+            const hasActivity = hasInc || hasExp || summary.hasTransfer;
 
             html += `
             <div class="wb-calendar-day ${heatClass} ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}" 
                  onclick="app.selectLedgerDate('${fullDateStr}')"
                  title="${titleText}">
+                ${hasActivity ? '<div class="wb-day-horizon-bar"></div>' : ''}
                 <div class="wb-day-header">
                     <span class="wb-day-number">${day}</span>
-                    <div class="wb-day-badges">
-                        ${badgeHtml}
-                    </div>
                 </div>
                 <div class="wb-day-body">
                     ${amountHtml}

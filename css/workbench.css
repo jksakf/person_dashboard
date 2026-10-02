@@ -1063,6 +1063,7 @@ header.wb-header {
     flex-direction: column;
     justify-content: space-between;
     position: relative;
+    overflow: hidden;
     user-select: none;
 }
 
@@ -1078,8 +1079,8 @@ header.wb-header {
 
 .wb-calendar-day.selected {
     border: 2px solid var(--primary) !important;
-    background: rgba(56, 189, 248, 0.09) !important;
-    box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
+    background: rgba(56, 189, 248, 0.12) !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
 }
 
 .wb-calendar-day.today .wb-day-number {
@@ -1095,10 +1096,54 @@ header.wb-header {
     pointer-events: none;
 }
 
+/* 頂部 3.5px 霓虹能量光條 (Horizon Glow Bar) */
+.wb-day-horizon-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3.5px;
+    z-index: 2;
+    transition: all 0.2s ease;
+}
+
+.wb-calendar-day:hover .wb-day-horizon-bar {
+    height: 4.5px;
+    filter: brightness(1.2);
+}
+
+.wb-calendar-day.income-only .wb-day-horizon-bar,
+.wb-calendar-day.net-positive-ambient .wb-day-horizon-bar {
+    background: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.7);
+}
+
+.wb-calendar-day.heat-1 .wb-day-horizon-bar {
+    background: #34d399;
+    box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+}
+
+.wb-calendar-day.heat-2 .wb-day-horizon-bar {
+    background: #eab308;
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.65);
+}
+
+.wb-calendar-day.heat-3 .wb-day-horizon-bar {
+    background: #f97316;
+    box-shadow: 0 0 9px rgba(249, 115, 22, 0.7);
+}
+
+.wb-calendar-day.heat-4 .wb-day-horizon-bar {
+    background: #ef4444;
+    box-shadow: 0 0 11px rgba(239, 68, 68, 0.85);
+}
+
 .wb-day-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+    z-index: 1;
 }
 
 .wb-day-number {
@@ -1107,160 +1152,174 @@ header.wb-header {
     color: var(--text-color);
 }
 
-.wb-day-badges {
-    display: flex;
-    gap: 3px;
-    align-items: center;
-}
-
-.wb-day-badge-icon {
-    font-size: 0.72rem;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
-    transition: transform 0.15s ease;
-}
-
-.wb-calendar-day:hover .wb-day-badge-icon {
-    transform: scale(1.15);
-}
-
-/* 日曆收支與淨流動階層化呈現 */
+/* 居中高對比發光牌 (Centered Pill Badge) */
 .wb-day-body {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: center;
     margin-top: auto;
+    margin-bottom: auto;
     width: 100%;
+    padding: 0.2rem 0;
+    position: relative;
+    z-index: 1;
 }
 
-.wb-day-hero-net {
-    font-size: 0.88rem;
+.wb-day-pill-badge {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+    padding: 3px 9px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+    transition: all 0.15s ease;
+    max-width: 96%;
+}
+
+.wb-calendar-day:hover .wb-day-pill-badge {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.wb-day-pill-badge.pill-positive {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.2);
+}
+
+.wb-day-pill-badge.pill-negative {
+    border-color: rgba(239, 68, 68, 0.35);
+    box-shadow: 0 2px 10px rgba(239, 68, 68, 0.2);
+}
+
+.wb-day-pill-amount {
+    font-size: 0.84rem;
     font-weight: 700;
     font-family: var(--font-mono, monospace);
     letter-spacing: -0.3px;
-    line-height: 1.2;
-    text-align: right;
-    transition: transform 0.15s ease;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
 }
 
-.wb-calendar-day:hover .wb-day-hero-net {
-    transform: scale(1.03);
+.wb-day-pill-amount.net-positive {
+    color: #34d399;
+    text-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
 }
 
-.wb-day-hero-net.net-positive {
-    color: #10b981;
-    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
-}
-
-.wb-day-hero-net.net-negative {
+.wb-day-pill-amount.net-negative {
     color: #f87171;
+    text-shadow: 0 0 8px rgba(248, 113, 113, 0.4);
 }
 
-/* 精煉雙向收支髮絲明細 (Hairline Breakdown) */
-.wb-day-hairline-breakdown {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 2px;
-    font-size: 0.65rem;
+.wb-day-pill-subnote {
+    font-size: 0.62rem;
     font-family: var(--font-mono, monospace);
-    line-height: 1.1;
-    margin-top: 3px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    text-align: center;
+    line-height: 1;
+    white-space: nowrap;
 }
 
-.wb-hairline-inc {
-    color: #10b981;
+.wb-pill-sub-inc {
+    color: #34d399;
     font-weight: 600;
-    opacity: 0.92;
+    opacity: 0.95;
 }
 
-.wb-hairline-sep {
+.wb-pill-sub-sep {
     color: var(--text-muted);
     opacity: 0.4;
-    font-size: 0.58rem;
-    margin: 0 1px;
+    margin: 0 2px;
 }
 
-.wb-hairline-exp {
+.wb-pill-sub-exp {
     color: #f87171;
     font-weight: 600;
-    opacity: 0.92;
+    opacity: 0.95;
 }
 
 .wb-day-transfer-tag {
-    font-size: 0.68rem;
-    color: var(--text-muted);
-    font-weight: 500;
+    font-size: 0.72rem;
+    color: var(--primary);
+    font-weight: 600;
 }
 
-/* 熱力等級邊線與終端微光背景卡片 */
+/* 18%~24% 深度飽和漸層底色與光暈邊框 (Saturated Gradient Fill) */
 .wb-calendar-day.income-only,
 .wb-calendar-day.net-positive-ambient {
-    border-left: 3px solid rgba(16, 185, 129, 0.9);
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(255, 255, 255, 0.015) 100%);
+    border-color: rgba(16, 185, 129, 0.45);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.22) 0%, rgba(16, 185, 129, 0.05) 100%);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.12);
 }
 
 .wb-calendar-day.income-only:hover,
 .wb-calendar-day.net-positive-ambient:hover {
-    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
-    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.28);
+    border-color: rgba(16, 185, 129, 0.7);
 }
 
 .wb-calendar-day.heat-1 {
-    border-left: 3px solid rgba(52, 211, 153, 0.85);
-    background: linear-gradient(135deg, rgba(52, 211, 153, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
-}
-.wb-calendar-day.heat-1 .wb-day-hero-net.net-negative {
-    color: #fca5a5;
+    border-color: rgba(52, 211, 153, 0.35);
+    background: linear-gradient(180deg, rgba(52, 211, 153, 0.14) 0%, rgba(52, 211, 153, 0.03) 100%);
 }
 
 .wb-calendar-day.heat-2 {
-    border-left: 3px solid rgba(234, 179, 8, 0.85);
-    background: linear-gradient(135deg, rgba(234, 179, 8, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-}
-.wb-calendar-day.heat-2 .wb-day-hero-net.net-negative {
-    color: #f87171;
+    border-color: rgba(234, 179, 8, 0.4);
+    background: linear-gradient(180deg, rgba(234, 179, 8, 0.18) 0%, rgba(234, 179, 8, 0.04) 100%);
 }
 
 .wb-calendar-day.heat-3 {
-    border-left: 3px solid rgba(249, 115, 22, 0.9);
-    background: linear-gradient(135deg, rgba(249, 115, 22, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
-}
-.wb-calendar-day.heat-3 .wb-day-hero-net.net-negative {
-    color: #fb7185;
+    border-color: rgba(249, 115, 22, 0.45);
+    background: linear-gradient(180deg, rgba(249, 115, 22, 0.22) 0%, rgba(249, 115, 22, 0.05) 100%);
 }
 
 .wb-calendar-day.heat-4 {
-    border-left: 3px solid rgba(239, 68, 68, 1);
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.09) 0%, rgba(255, 255, 255, 0.015) 100%);
-    box-shadow: inset 0 0 12px rgba(239, 68, 68, 0.06);
-}
-.wb-calendar-day.heat-4 .wb-day-hero-net.net-negative {
-    color: #f43f5e;
-    font-weight: 800;
-    text-shadow: 0 0 8px rgba(244, 63, 94, 0.35);
+    border-color: rgba(239, 68, 68, 0.55);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.26) 0%, rgba(239, 68, 68, 0.07) 100%);
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.2);
 }
 
 /* 淺色主題適配 (Light Theme Adaptations) */
 [data-theme="light"] .wb-calendar-day.income-only,
 [data-theme="light"] .wb-calendar-day.net-positive-ambient {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(0, 0, 0, 0.01) 100%);
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.20) 0%, rgba(16, 185, 129, 0.04) 100%);
+    border-color: rgba(16, 185, 129, 0.5);
 }
 [data-theme="light"] .wb-calendar-day.heat-1 {
-    background: linear-gradient(135deg, rgba(52, 211, 153, 0.08) 0%, rgba(0, 0, 0, 0.01) 100%);
+    background: linear-gradient(180deg, rgba(52, 211, 153, 0.18) 0%, rgba(52, 211, 153, 0.03) 100%);
+    border-color: rgba(52, 211, 153, 0.4);
 }
 [data-theme="light"] .wb-calendar-day.heat-2 {
-    background: linear-gradient(135deg, rgba(234, 179, 8, 0.10) 0%, rgba(0, 0, 0, 0.01) 100%);
+    background: linear-gradient(180deg, rgba(234, 179, 8, 0.22) 0%, rgba(234, 179, 8, 0.04) 100%);
+    border-color: rgba(234, 179, 8, 0.45);
 }
 [data-theme="light"] .wb-calendar-day.heat-3 {
-    background: linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(0, 0, 0, 0.01) 100%);
+    background: linear-gradient(180deg, rgba(249, 115, 22, 0.24) 0%, rgba(249, 115, 22, 0.05) 100%);
+    border-color: rgba(249, 115, 22, 0.5);
 }
 [data-theme="light"] .wb-calendar-day.heat-4 {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.14) 0%, rgba(0, 0, 0, 0.01) 100%);
+    background: linear-gradient(180deg, rgba(239, 68, 68, 0.28) 0%, rgba(239, 68, 68, 0.06) 100%);
+    border-color: rgba(239, 68, 68, 0.6);
+}
+
+[data-theme="light"] .wb-day-pill-badge {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+[data-theme="light"] .wb-day-pill-amount.net-positive {
+    color: #059669;
+    text-shadow: none;
+}
+[data-theme="light"] .wb-day-pill-amount.net-negative {
+    color: #dc2626;
+    text-shadow: none;
 }
 
 /* 右側時間軸明細側欄 */
